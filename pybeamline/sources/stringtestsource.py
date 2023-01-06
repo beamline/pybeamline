@@ -1,7 +1,7 @@
 from pybeamline.bevent import BEvent
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Iterable, Optional
 from reactivex import Observable, abc
-from reactivex.disposable import CompositeDisposable, Disposable
+from reactivex.disposable import CompositeDisposable
 
 
 def string_test_source(iterable: Iterable[str], scheduler: Optional[abc.SchedulerBase] = None) -> Observable[BEvent]:
@@ -13,4 +13,5 @@ def string_test_source(iterable: Iterable[str], scheduler: Optional[abc.Schedule
                     BEvent(event, "case_" + str(trace_id), "Process"))
             trace_id += 1
         observer.on_completed()
+        return CompositeDisposable()
     return Observable(subscribe)
