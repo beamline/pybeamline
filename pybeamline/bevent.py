@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class BEvent:
-    def __init__(self, activityName, caseId, processName="ProcessName"):
+    def __init__(self, activityName, caseId, processName="ProcessName", eventTime=datetime.now()):
         self.processAttributes = dict()
         self.traceAttributes = dict()
         self.eventAttributes = dict()
@@ -11,7 +11,7 @@ class BEvent:
         self.processAttributes[xes.DEFAULT_NAME_KEY] = processName
         self.traceAttributes[xes.DEFAULT_NAME_KEY] = caseId
         self.eventAttributes[xes.DEFAULT_NAME_KEY] = activityName
-        self.eventAttributes[xes.DEFAULT_TIMESTAMP_KEY] = datetime.now()
+        self.eventAttributes[xes.DEFAULT_TIMESTAMP_KEY] = eventTime
 
     def getProcessName(self):
         return self.processAttributes[xes.DEFAULT_NAME_KEY]
