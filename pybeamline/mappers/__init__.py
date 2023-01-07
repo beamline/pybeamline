@@ -1,0 +1,1 @@
+from pybeamline.mappers.infinite_size_directly_follows_mapper import infinite_size_directly_follows_mapper
