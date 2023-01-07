@@ -27,13 +27,14 @@ class BEvent:
 
     def __str__(self) -> str:
         return (
-            "("
-            + self.getEventName()
-            + ", "
-            + self.getTraceName()
-            + ", "
-            + self.getProcessName()
-            + ", "
-            + str(self.getEventTime())
-            + ")"
+            "(" +
+            self.getEventName() + ", " +
+            self.getTraceName() + ", " +
+            self.getProcessName() + ", " +
+            str(self.getEventTime())
+            + " - " +
+            str({c: self.eventAttributes[c] for c in self.eventAttributes.keys() - {xes.DEFAULT_NAME_KEY, xes.DEFAULT_TIMESTAMP_KEY}}) + " - " +
+            str({c: self.traceAttributes[c] for c in self.traceAttributes.keys() - {xes.DEFAULT_NAME_KEY}}) + " - " +
+            str({c: self.processAttributes[c] for c in self.processAttributes.keys() - {xes.DEFAULT_NAME_KEY}}) +
+            ")"
         )
