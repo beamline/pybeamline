@@ -6,15 +6,15 @@ from typing import Callable, Tuple
 
 
 def infinite_size_directly_follows_mapper() -> Callable[[Observable[BEvent]], Observable[Tuple[str, str]]]:
-    map = {}
+    map_cases = {}
 
     def extractor(event: BEvent) -> Observable[Tuple[str, str]]:
-        toRet = None
-        if event.getTraceName() in map.keys():
-            toRet = (map[event.getTraceName()], event.getEventName())
-        map[event.getTraceName()] = event.getEventName()
-        if toRet == None:
+        to_ret = None
+        if event.get_trace_name() in map_cases.keys():
+            to_ret = (map_cases[event.get_trace_name()], event.get_event_name())
+        map_cases[event.get_trace_name()] = event.get_event_name()
+        if to_ret is None:
             return empty()
         else:
-            return just(toRet)
+            return just(to_ret)
     return ops.flat_map(extractor)

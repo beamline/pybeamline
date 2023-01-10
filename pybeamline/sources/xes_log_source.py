@@ -6,16 +6,19 @@ from pm4py.objects.log.obj import EventLog
 import pandas as pd
 from pm4py.util import xes_constants as xes_util
 import pm4py
-import math
 
 
-def xes_log_source(log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.SchedulerBase] = None) -> Observable[BEvent]:
+def xes_log_source(
+        log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.SchedulerBase] = None
+) -> Observable[BEvent]:
 
     if type(log) is pd.DataFrame:
         log = pm4py.convert_to_dataframe(log)
     log = log.sort_values(by=[xes_util.DEFAULT_TIMESTAMP_KEY])
 
-    def subscribe(observer: abc.ObserverBase[BEvent], scheduler_: Optional[abc.SchedulerBase] = None) -> abc.DisposableBase:
+    def subscribe(
+            observer: abc.ObserverBase[BEvent], scheduler_: Optional[abc.SchedulerBase] = None
+    ) -> abc.DisposableBase:
 
         for index, event in log.iterrows():
             e = BEvent(
@@ -27,10 +30,11 @@ def xes_log_source(log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.S
                 if col not in [xes_util.DEFAULT_NAME_KEY, "case:" + xes_util.DEFAULT_NAME_KEY, xes_util.DEFAULT_TIMESTAMP_KEY]:
                     if event[col] == event[col]: # verify for nan
                         if col.startswith("case:"):
-                            e.traceAttributes[col[5:]] = event[col]
+                            e.trace_attributes[col[5:]] = event[col]
                         else:
-                            e.eventAttributes[col] = event[col]
+                            e.event_attributes[col] = event[col]
             observer.on_next(e)
         observer.on_completed()
         return CompositeDisposable()
+
     return Observable(subscribe)

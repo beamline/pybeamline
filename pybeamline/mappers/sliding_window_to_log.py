@@ -8,9 +8,9 @@ from pandas import DataFrame
 def list_to_log(events: List[BEvent]) -> DataFrame:
     list_of_events = []
     for e in events:
-        data_attributes = e.eventAttributes
-        data_attributes.update({"case:" + n: e.traceAttributes[n] for n in e.traceAttributes})
-        data_attributes.update({"process:" + n: e.processAttributes[n] for n in e.processAttributes})
+        data_attributes = e.event_attributes
+        data_attributes.update({"case:" + n: e.trace_attributes[n] for n in e.trace_attributes})
+        data_attributes.update({"process:" + n: e.process_attributes[n] for n in e.process_attributes})
         list_of_events.append(data_attributes)
     log = DataFrame(list_of_events)
     return log
