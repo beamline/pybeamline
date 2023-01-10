@@ -1,32 +1,23 @@
-from pm4py.objects.log.obj import Event, Trace, EventLog
 from typing import List, Callable
 from reactivex import Observable
 from reactivex import operators as ops
 from pybeamline.bevent import BEvent
+from pandas import DataFrame
 
 
-def list_to_log(events: List[BEvent]) -> EventLog:
-    log = {}
+def list_to_log(events: List[BEvent]) -> DataFrame:
+    list_of_events = []
     for e in events:
-        caseid = e.getTraceName()
-        if not caseid in log.keys():
-            log[caseid] = []
-        log[caseid].append(e)
-    newLog = EventLog()
-    for caseid in log:
-        trace = Trace(
-            attributes={"case:concept:name": log[caseid][0].getTraceName()})
-        for event in log[caseid]:
-            e = Event()
-            e["concept:name"] = event.getEventName()
-            e["time:timestamp"] = event.getEventTime()
-            trace.append(e)
-        newLog.append(trace)
-    return newLog
+        data_attributes = e.eventAttributes
+        data_attributes.update({"case:" + n: e.traceAttributes[n] for n in e.traceAttributes})
+        data_attributes.update({"process:" + n: e.processAttributes[n] for n in e.processAttributes})
+        list_of_events.append(data_attributes)
+    log = DataFrame(list_of_events)
+    return log
 
 
-def sliding_window_to_log() -> Callable[[Observable[Observable[BEvent]]], Observable[EventLog]]:
-    def o2l(obs: Observable[BEvent]) -> Observable[EventLog]:
+def sliding_window_to_log() -> Callable[[Observable[Observable[BEvent]]], Observable[DataFrame]]:
+    def o2l(obs: Observable[BEvent]) -> Observable[DataFrame]:
         return obs.pipe(
             ops.to_iterable(),
             ops.map(lambda x: list_to_log(x)))
