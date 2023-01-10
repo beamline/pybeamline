@@ -9,8 +9,13 @@ def read_file(filename):
 
 setup(
     name="pybeamline",
-    packages=find_packages(include=["pybeamline"]),
-    version="0.0.2",
+    packages=[
+        "pybeamline",
+        "pybeamline.filters",
+        "pybeamline.sources",
+        "pybeamline.mappers"
+    ],
+    version="0.0.1b3",
     description="Python version of Beamline (based on ReactiveX)",
     author="Andrea Burattin",
     license="Apache-2.0",
