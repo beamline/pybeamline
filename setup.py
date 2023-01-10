@@ -15,7 +15,7 @@ setup(
         "pybeamline.sources",
         "pybeamline.mappers"
     ],
-    version="0.0.1b4",
+    version="0.0.1b5",
     description="Python version of Beamline (based on ReactiveX)",
     author="Andrea Burattin",
     license="Apache-2.0",

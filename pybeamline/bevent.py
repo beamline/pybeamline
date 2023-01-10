@@ -26,14 +26,12 @@ class BEvent:
         return self.event_attributes[xes.DEFAULT_TIMESTAMP_KEY]
 
     def __str__(self) -> str:
-        return (
-            "(" + self.get_event_name() + ", " + self.get_trace_name()
-            + ", " + self.get_process_name() + ", " + str(self.get_event_time())
-            + " - " +
-            str({c: self.event_attributes[c] for c in self.event_attributes.keys() - {xes.DEFAULT_NAME_KEY, xes.DEFAULT_TIMESTAMP_KEY}})
-            + " - " +
-            str({c: self.trace_attributes[c] for c in self.trace_attributes.keys() - {xes.DEFAULT_NAME_KEY}})
-            + " - " +
-            + str({c: self.process_attributes[c] for c in self.process_attributes.keys() - {xes.DEFAULT_NAME_KEY}})
-            + ")"
+        return "({}, {}, {}, {} - {} - {} - {})".format(
+            self.get_event_name(),
+            self.get_trace_name(),
+            self.get_process_name(),
+            str(self.get_event_time()),
+            str({c: self.event_attributes[c] for c in self.event_attributes.keys() - {xes.DEFAULT_NAME_KEY, xes.DEFAULT_TIMESTAMP_KEY}}),
+            str({c: self.trace_attributes[c] for c in self.trace_attributes.keys() - {xes.DEFAULT_NAME_KEY}}),
+            str({c: self.process_attributes[c] for c in self.process_attributes.keys() - {xes.DEFAULT_NAME_KEY}})
         )
