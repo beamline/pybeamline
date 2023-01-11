@@ -1,5 +1,5 @@
 from typing import List, Callable
-from reactivex import Observable
+from reactivex import Observable, empty, just
 from reactivex import operators as ops
 from pybeamline.bevent import BEvent
 from pandas import DataFrame
@@ -20,6 +20,7 @@ def sliding_window_to_log() -> Callable[[Observable[Observable[BEvent]]], Observ
     def o2l(obs: Observable[BEvent]) -> Observable[DataFrame]:
         return obs.pipe(
             ops.to_iterable(),
-            ops.map(lambda x: list_to_log(x)))
+            ops.flat_map(lambda x: empty() if not x else just(list_to_log(x)))
+        )
 
     return ops.flat_map(o2l)
