@@ -8,6 +8,10 @@ from pm4py.util import xes_constants as xes_util
 import pm4py
 
 
+def xes_log_source_from_file(log: str) -> Observable[BEvent]:
+    return xes_log_source(pm4py.read_xes(log))
+
+
 def xes_log_source(
         log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.SchedulerBase] = None
 ) -> Observable[BEvent]:
