@@ -3,22 +3,22 @@ from typing import Optional, Union
 from reactivex import Observable, abc
 from reactivex.disposable import CompositeDisposable
 from pm4py.objects.log.obj import EventLog
-import pandas as pd
 from pm4py.util import xes_constants as xes_util
-import pm4py
+from pm4py import read_xes, convert_to_dataframe
+import pandas as pd
 
 
 def xes_log_source_from_file(log: str) -> Observable[BEvent]:
-    return xes_log_source(pm4py.read_xes(log))
+    return xes_log_source(read_xes(log))
 
 
 def xes_log_source(
         log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.SchedulerBase] = None
 ) -> Observable[BEvent]:
-
-    if type(log) is pd.DataFrame:
-        log = pm4py.convert_to_dataframe(log)
-    log = log.sort_values(by=[xes_util.DEFAULT_TIMESTAMP_KEY])
+    if type(log) is not pd.DataFrame:
+        log = convert_to_dataframe(log)
+    if xes_util.DEFAULT_TIMESTAMP_KEY in log.columns:
+        log = log.sort_values(by=[xes_util.DEFAULT_TIMESTAMP_KEY])
 
     def subscribe(
             observer: abc.ObserverBase[BEvent], scheduler_: Optional[abc.SchedulerBase] = None
