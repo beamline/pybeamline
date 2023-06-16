@@ -1,3 +1,4 @@
 *.pyc
+.idea
 dist/
 pybeamline.egg-info
