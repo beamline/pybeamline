@@ -25,11 +25,14 @@ def xes_log_source(
     ) -> abc.DisposableBase:
 
         for index, event in log.iterrows():
+            time = None
+            if xes_util.DEFAULT_TIMESTAMP_KEY in event:
+                time = event[xes_util.DEFAULT_TIMESTAMP_KEY]
             e = BEvent(
                 event[xes_util.DEFAULT_NAME_KEY],
                 event["case:" + xes_util.DEFAULT_TRACEID_KEY],
                 "log-file",
-                event[xes_util.DEFAULT_TIMESTAMP_KEY])
+                time)
             for col in log.columns:
                 if col not in [xes_util.DEFAULT_NAME_KEY, "case:" + xes_util.DEFAULT_NAME_KEY, xes_util.DEFAULT_TIMESTAMP_KEY]:
                     if event[col] == event[col]: # verify for nan
