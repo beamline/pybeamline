@@ -87,6 +87,14 @@ log_source(["ABCD", "ABCD"]).pipe(
 ).subscribe(lambda x: print(str(x)))
 ```
 
+Heuristics miner with Lossy Counting and Heuristics miner with Lossy Counting with Budgets are presented in:
+* [Control-flow Discovery from Event Streams](https://andrea.burattin.net/publications/2014-cec)  
+A. Burattin, A. Sperduti, W. M. P. van der Aalst  
+In *Proceedings of the Congress on Evolutionary Computation* (IEEE WCCI CEC 2014); Beijing, China; July 6-11, 2014.
+* [Heuristics Miners for Streaming Event Data](https://andrea.burattin.net/publications/2012-corr-stream)  
+A. Burattin, A. Sperduti, W. M. P. van der Aalst  
+In *CoRR* abs/1212.6383, Dec. 2012.
+
 ## Conformance checking
 
 Currently only conformance checking using behavioral profiles is supported:
@@ -103,6 +111,11 @@ log_source(["ABCD", "ABCD"]).pipe(
     behavioral_conformance(reference_model)
 ).subscribe(lambda x: print(str(x)))
 ```
+
+The technique is described in
+* [Online Conformance Checking Using Behavioural Patterns](https://andrea.burattin.net/publications/2018-bpm)  
+A. Burattin, S. van Zelst, A. Armas-Cervantes, B. van Dongen, J. Carmona  
+In *Proceedings of BPM 2018*; Sydney, Australia; September 2018.
 
 ## Sliding window
 
