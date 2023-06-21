@@ -10,24 +10,24 @@ In the rest of this document, the main functionalities are exposed.
 
 ## Sources
 
-```
+```python
 # Let's ignore some PM4PY warnings in the notebook
 import warnings
 warnings.filterwarnings("ignore")
 ```
-```
+```python
 from pybeamline.sources import string_test_source
 
 string_test_source(["ABC", "ACB", "EFG"]) \
     .subscribe(lambda x: print(str(x)))
 ```
-```
+```python
 from pybeamline.sources import xes_log_source_from_file
 
 xes_log_source_from_file("tests/log.xes") \
     .subscribe(lambda x: print(str(x)))
 ```
-```
+```python
 from pybeamline.sources import log_source
 
 log_source(["ABC", "ACB", "EFG"]) \
@@ -38,7 +38,7 @@ log_source("tests/log.xes") \
 ```
 
 ## Filters
-```
+```python
 from pybeamline.sources import log_source
 from pybeamline.filters import excludes_activity_filter
 
@@ -58,7 +58,7 @@ log_source("tests/log.xes").pipe(
 
 Mining of directly-follows relations:
 
-```
+```python
 from pybeamline.sources import log_source
 from pybeamline.mappers import infinite_size_directly_follows_mapper
 
@@ -69,7 +69,7 @@ log_source(["ABC", "ACB"]).pipe(
 
 Mining of a Heuristics net using Lossy Counting:
 
-```
+```python
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 
 log_source(["ABCD", "ABCD"]).pipe(
@@ -78,7 +78,8 @@ log_source(["ABCD", "ABCD"]).pipe(
 ```
 
 Mining of a Heuristics net using Lossy Counting with Budget:
-```
+
+```python
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 
 log_source(["ABCD", "ABCD"]).pipe(
@@ -90,7 +91,7 @@ log_source(["ABCD", "ABCD"]).pipe(
 
 Currently only conformance checking using behavioral profiles is supported:
 
-```
+```python
 from pybeamline.algorithms.conformance import mine_behavioral_model_from_stream, behavioral_conformance
 
 source = log_source(["ABCD", "ABCD"])
@@ -107,7 +108,7 @@ log_source(["ABCD", "ABCD"]).pipe(
 
 This technique allows to apply any existing process mininig technique on streaming data
 
-```
+```python
 from pybeamline.sources import log_source
 from pybeamline.mappers import sliding_window_to_log
 from reactivex.operators import window_with_count
