@@ -62,10 +62,6 @@ string_test_source(["ABC", "ACB", "EFG"]) \
     (F, case_3, Process, 2023-06-21 09:38:33.265476 - {} - {} - {})
     (G, case_3, Process, 2023-06-21 09:38:33.265476 - {} - {} - {})
 
-</div>
-
-<div class="output execute_result" execution_count="14">
-
     <reactivex.disposable.disposable.Disposable at 0x173527f59a0>
 
 </div>
@@ -85,23 +81,11 @@ xes_log_source_from_file("tests/log.xes") \
 
     parsing log, completed traces :: 100%|██████████| 2/2 [00:00<00:00, 908.74it/s]
 
-</div>
-
-<div class="output stream stdout">
-
     (a11, c1, log-file, 2023-06-21 09:38:35.571279 - {'lifecycle:transition': 'complete', 'act': 'a11'} - {'variant': 'Variant 1', 'creator': 'Fluxicon Disco', 'variant-index': 1} - {})
     (a12, c1, log-file, 2023-06-21 09:38:35.572279 - {'lifecycle:transition': 'complete', 'act': 'a12'} - {'variant': 'Variant 1', 'creator': 'Fluxicon Disco', 'variant-index': 1} - {})
     (a21, c2, log-file, 2023-06-21 09:38:35.572279 - {'lifecycle:transition': 'complete', 'act': 'a21'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a22, c2, log-file, 2023-06-21 09:38:35.572279 - {'lifecycle:transition': 'complete', 'act': 'a22'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a23, c2, log-file, 2023-06-21 09:38:35.572279 - {'lifecycle:transition': 'complete', 'act': 'a23'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
-
-</div>
-
-<div class="output stream stderr">
-
-</div>
-
-<div class="output execute_result" execution_count="15">
 
     <reactivex.disposable.disposable.Disposable at 0x173528457c0>
 
@@ -133,10 +117,6 @@ log_source("tests/log.xes") \
     (F, case_3, Process, 2023-06-21 09:38:39.484791 - {} - {} - {})
     (G, case_3, Process, 2023-06-21 09:38:39.484791 - {} - {} - {})
 
-</div>
-
-<div class="output stream stderr">
-
     parsing log, completed traces :: 100%|██████████| 2/2 [00:00<00:00, 7973.96it/s]
 
 </div>
@@ -148,14 +128,6 @@ log_source("tests/log.xes") \
     (a21, c2, log-file, 2023-06-21 09:38:39.492473 - {'lifecycle:transition': 'complete', 'act': 'a21'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a22, c2, log-file, 2023-06-21 09:38:39.492473 - {'lifecycle:transition': 'complete', 'act': 'a22'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a23, c2, log-file, 2023-06-21 09:38:39.492473 - {'lifecycle:transition': 'complete', 'act': 'a23'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
-
-</div>
-
-<div class="output stream stderr">
-
-</div>
-
-<div class="output execute_result" execution_count="16">
 
     <reactivex.disposable.disposable.Disposable at 0x17352845340>
 
@@ -191,22 +163,10 @@ log_source("tests/log.xes").pipe(
 
     parsing log, completed traces :: 100%|██████████| 2/2 [00:00<00:00, 1849.34it/s]
 
-</div>
-
-<div class="output stream stdout">
-
     (a12, c1, log-file, 2023-06-21 09:40:46.263579 - {'lifecycle:transition': 'complete', 'act': 'a12'} - {'variant': 'Variant 1', 'creator': 'Fluxicon Disco', 'variant-index': 1} - {})
     (a21, c2, log-file, 2023-06-21 09:40:46.264566 - {'lifecycle:transition': 'complete', 'act': 'a21'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a22, c2, log-file, 2023-06-21 09:40:46.265082 - {'lifecycle:transition': 'complete', 'act': 'a22'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
     (a23, c2, log-file, 2023-06-21 09:40:46.265082 - {'lifecycle:transition': 'complete', 'act': 'a23'} - {'variant': 'Variant 2', 'creator': 'Fluxicon Disco', 'variant-index': 2} - {})
-
-</div>
-
-<div class="output stream stderr">
-
-</div>
-
-<div class="output execute_result" execution_count="34">
 
     <reactivex.disposable.disposable.Disposable at 0x173521178b0>
 
@@ -244,10 +204,6 @@ log_source(["ABC", "ACB"]).pipe(
     ('A', 'C')
     ('C', 'B')
 
-</div>
-
-<div class="output execute_result" execution_count="40">
-
     <reactivex.disposable.disposable.Disposable at 0x173529a5b80>
 
 </div>
@@ -275,10 +231,6 @@ log_source(["ABCD", "ABCD"]).pipe(
     {'A': (node:A connections:{B:[0.5]}), 'B': (node:B connections:{C:[0.5]}), 'C': (node:C connections:{})}
     {'C': (node:C connections:{D:[0.5]}), 'D': (node:D connections:{}), 'A': (node:A connections:{B:[0.6666666666666666]}), 'B': (node:B connections:{C:[0.6666666666666666]})}
 
-</div>
-
-<div class="output execute_result" execution_count="43">
-
     <reactivex.disposable.disposable.Disposable at 0x173521cfbb0>
 
 </div>
@@ -305,10 +257,6 @@ log_source(["ABCD", "ABCD"]).pipe(
 
     {'A': (node:A connections:{B:[0.5]}), 'B': (node:B connections:{C:[0.5]}), 'C': (node:C connections:{D:[0.5]}), 'D': (node:D connections:{})}
     {'A': (node:A connections:{B:[0.6666666666666666]}), 'B': (node:B connections:{C:[0.6666666666666666]}), 'C': (node:C connections:{D:[0.6666666666666666]}), 'D': (node:D connections:{})}
-
-</div>
-
-<div class="output execute_result" execution_count="44">
 
     <reactivex.disposable.disposable.Disposable at 0x173521cfd60>
 
@@ -352,9 +300,6 @@ log_source(["ABCD", "ABCD"]).pipe(
     (1.0, 0.5, 1)
     (1.0, 1.0, 1)
 
-</div>
-
-<div class="output execute_result" execution_count="49">
 
     <reactivex.disposable.disposable.Disposable at 0x17352e173a0>
 
@@ -393,19 +338,8 @@ log_source(["ABC", "ABD"]).pipe(
     Counter({('A', 'B'): 1, ('B', 'C'): 1})
     Counter({('A', 'B'): 1, ('B', 'D'): 1})
 
-</div>
-
-<div class="output execute_result" execution_count="39">
-
     <reactivex.disposable.disposable.Disposable at 0x17352a192e0>
 
 </div>
-
-</div>
-
-<div class="cell code">
-
-``` python
-```
 
 </div>
