@@ -1,4 +1,5 @@
 *.pyc
 .idea
-dist/
+dist
 pybeamline.egg-info
+build

@@ -18,7 +18,7 @@ setup(
         "pybeamline.algorithms.conformance",
         "pybeamline.algorithms.discovery",
     ],
-    version="0.0.2",
+    version="0.0.3",
     description="Python version of Beamline (based on ReactiveX)",
     author="Andrea Burattin",
     license="Apache-2.0",
