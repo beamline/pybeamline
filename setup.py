@@ -7,6 +7,11 @@ def read_file(filename):
         return f.read()
 
 
+with open("requirements.txt", "r") as f:
+    required_packages = f.read().splitlines()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="pybeamline",
     packages=[
@@ -20,11 +25,9 @@ setup(
     ],
     version="0.0.3",
     description="Python version of Beamline (based on ReactiveX)",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Andrea Burattin",
     license="Apache-2.0",
-    install_requires=[
-        'pm4py',
-        'reactivex',
-        'pandas'
-    ]
+    install_requires=required_packages
 )
