@@ -1,5 +1,6 @@
 from pybeamline.sources.xes_log_source import xes_log_source, xes_log_source_from_file
 from pybeamline.sources.string_test_source import string_test_source
+from pybeamline.sources.mqttxes_source import mqttxes_source
 from typing import Union
 from pandas import DataFrame
 from pm4py.objects.log.obj import EventLog
