@@ -1,23 +1,16 @@
 from pybeamline.algorithms.conformance.Templates.Alternate import Alternate
 from pybeamline.algorithms.conformance.Templates.Chain import Chain
 from pybeamline.algorithms.conformance.Templates.Response import Response
+from pybeamline.algorithms.conformance.Templates.Protocol import Template
 class Constraint():
 
-    def __init__(self, template) -> None:
-        match template:
-            case "Response":
-                self.templ = Response()
-            case "Alternate":
-                self.templ = Alternate()
-            case "Chain":
-                self.templ = Chain()
-            case _:
-                raise Exception("Template not found")
-        self.A
-        self.T
-        self.phi_a
-        self.phi_c
-        self.phi_tau
+    def __init__(self, template: Template) -> None:
+        self.templ = template
+        self.A = set()
+        self.T = set()   
+        self.phi_a = set()
+        self.phi_c = set()
+        self.phi_tau = set()
 
 #Let fulfill and viol be maps that, given a trace and a constraint, return the set of fulfilling and violating events
 def check_log_conformance(log, model):
@@ -39,13 +32,13 @@ def check_trace_conformance(trace, constr:Constraint):
     violations = set()
     template = constr.templ
 
-    Template().opening()
+    template.opening()
     for e in trace:
-        Template().fullfillment()
-        Template().violation()
-        Template().activation()
+        template.fullfillment()
+        template.violation()
+        template.activation()
 
-    Template().closing()
+    template.closing()
 
     return violations, fulfillments
     

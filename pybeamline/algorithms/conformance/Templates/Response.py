@@ -4,7 +4,7 @@ class Response():
            pass
     
         def opening(self):
-            print("Opening")
+            pass
     
         def closing(self):
             pass
