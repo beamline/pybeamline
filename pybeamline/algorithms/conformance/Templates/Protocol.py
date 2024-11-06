@@ -9,13 +9,17 @@ class Template(Protocol):
         pass
 
     def closing(self, pending, fulfillments, violations):
-        pass
+        
+        return pending, violations
 
     def fullfillment(self, e, trace, pending, fulfillments, T, phi_a, phi_c, phi_tau):
-        pass
+        
+        return pending, fulfillments
 
     def violation(self, e, trace, pending, violations, T, phi_c, phi_tau):
-        pass
+        
+        return pending, violations
 
     def activation(self, e, A, pending, phi_a):
-        pass
+        
+        return pending

@@ -1,46 +1,61 @@
-from pybeamline.algorithms.conformance.Templates.Alternate import Alternate
-from pybeamline.algorithms.conformance.Templates.Chain import Chain
-from pybeamline.algorithms.conformance.Templates.Response import Response
 from pybeamline.algorithms.conformance.Templates.Protocol import Template
+
+class Model():
+    def __init__(self) -> None:
+        self.constraints = set()
+    
+    def add_constraint(self, constraint):
+        self.constraints.add(constraint)
+
+    def remove_constraint(self, constraint):
+        self.constraints.remove(constraint)
+
+    def get_constraints(self):
+        return self.constraints
+    
 class Constraint():
+    def __init__(self, template: Template, A, T, phi_a, phi_c, phi_tau) -> None:
+        self.template = template
+        self.A = A
+        self.T = T
+        self.phi_a = phi_a
+        self.phi_c = phi_c
+        self.phi_tau = phi_tau
 
-    def __init__(self, template: Template) -> None:
-        self.templ = template
-        self.A = set()
-        self.T = set()   
-        self.phi_a = set()
-        self.phi_c = set()
-        self.phi_tau = set()
-
-#Let fulfill and viol be maps that, given a trace and a constraint, return the set of fulfilling and violating events
-def check_log_conformance(log, model):
+# Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log
+def check_log_conformance(log, model: Model):
     viol = dict()
     fulfill = dict()
 
     for trace in log:
-        for constr in model:
+
+        if trace not in viol:
+            viol[trace] = dict()
+
+        if trace not in fulfill:
+            fulfill[trace] = dict()
+
+        for constr in model.get_constraints():
             viol_res, fulfill_res = check_trace_conformance(trace, constr)
 
             viol[trace][constr] = viol_res
+
             fulfill[trace][constr] = fulfill_res
     
     return viol, fulfill
 
-def check_trace_conformance(trace, constr:Constraint):
+# Given a trace and a constraint, return the violations and fulfillments of the constraint on the trace
+def check_trace_conformance(trace, constraint:Constraint):
     pending = set()
     fulfillments = set()
     violations = set()
-    template = constr.templ
 
-    template.opening()
+    pending, fulfillments, violations = constraint.template.opening()
     for e in trace:
-        template.fullfillment()
-        template.violation()
-        template.activation()
+        pending, fulfillments = constraint.template.fullfillment(e, trace, pending, fulfillments, constraint.T, constraint.phi_a, constraint.phi_c, constraint.phi_tau)
+        pending, violations = constraint.template.violation(e, trace, pending, violations, constraint.T, constraint.phi_c, constraint.phi_tau)
+        pending = constraint.template.activation(e, constraint.A, pending, constraint.phi_a)
 
-    template.closing()
+    pending, violations = constraint.template.closing(pending, fulfillments, violations)
 
     return violations, fulfillments
-    
-# some form of templates
-# some form of constraints -> probably own object type
