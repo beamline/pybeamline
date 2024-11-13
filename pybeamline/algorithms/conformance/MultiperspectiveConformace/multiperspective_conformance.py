@@ -14,10 +14,10 @@ class Model():
         return self.constraints
     
 class Constraint():
-    def __init__(self, template: Template, A, T, phi_a, phi_c, phi_tau) -> None:
-        self.template = template
-        self.A = A
-        self.T = T
+    def __init__(constr) -> None:
+        self.template = Templates.Response
+        self.A = constr.A
+        self.T = constr.add
         self.phi_a = phi_a
         self.phi_c = phi_c
         self.phi_tau = phi_tau
@@ -36,6 +36,7 @@ def check_log_conformance(log, model: Model):
             fulfill[trace] = dict()
 
         for constr in model.get_constraints():
+            constraint = Constraint(constr)
             viol_res, fulfill_res = check_trace_conformance(trace, constr)
 
             viol[trace][constr] = viol_res
