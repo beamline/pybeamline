@@ -1,4 +1,4 @@
-from pybeamline.algorithms.conformance.Templates.Protocol import Template
+from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates import Template
 
 class Model():
     def __init__(self) -> None:
