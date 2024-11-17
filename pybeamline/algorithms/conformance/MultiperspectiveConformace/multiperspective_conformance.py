@@ -1,4 +1,5 @@
 from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates import Template
+from MP_Declare_Model import Constraint
 
 class Model():
     def __init__(self) -> None:
@@ -13,14 +14,6 @@ class Model():
     def get_constraints(self):
         return self.constraints
     
-class Constraint():
-    def __init__(constr) -> None:
-        self.template = Templates.Response
-        self.A = constr.A
-        self.T = constr.add
-        self.phi_a = phi_a
-        self.phi_c = phi_c
-        self.phi_tau = phi_tau
 
 # Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log
 def check_log_conformance(log, model: Model):
