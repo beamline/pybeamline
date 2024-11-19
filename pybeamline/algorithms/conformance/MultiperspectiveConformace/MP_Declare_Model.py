@@ -24,8 +24,10 @@ class Constraint_Condition():
         
         if A_match and T_match and phi_match:
             # Horrible implementation, if there are more than one, but that doesnt apply to our current models in xml
-            A = set(A_match.group(1))
-            T = set(T_match.group(1))
+            A = set()
+            A.add(A_match.group(1))
+            T = set()
+            T.add(T_match.group(1))
             phi_a = int(phi_match.group(1))
             phi_c = int(phi_match.group(2))
             phi_tau = phi_match.group(3)
@@ -34,6 +36,9 @@ class Constraint_Condition():
             return Constraint_Condition(A, T, phi_a, phi_c, phi_tau)
         else:
             raise ValueError("Input string is not in the expected format.")
+        
+    def __repr__(self) -> str:
+        return (f"A: {self.A}, T: {self.T}, Tau: [{self.phi_a, self.phi_c, self.phi_tau}]")
 
 class Constraint():
     def __init__(self, id:str, manadatory:bool, condition:Constraint_Condition, name:str, template, constraint_parameters:list) -> None:
@@ -149,4 +154,7 @@ class MP_delcare_model:
 
 
 if __name__ == "__main__":
-    print(MP_delcare_model.from_xml("pybeamline/algorithms/conformance/MultiperspectiveConformace/model-10-constraints-data.xml"))
+    model = MP_delcare_model.from_xml("pybeamline/algorithms/conformance/MultiperspectiveConformace/dummy_models/model-10-constraints-data.xml")
+
+    for constraint in model.constraints:
+        print(constraint.condition)
