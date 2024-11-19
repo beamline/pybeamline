@@ -29,12 +29,12 @@ def check_log_conformance(log, model: Model):
             fulfill[trace] = dict()
 
         for constr in model.get_constraints():
-            constraint = Constraint(constr)
-            viol_res, fulfill_res = check_trace_conformance(trace, constr)
+            constraint = Constraint(constr) #not giving correct paramteters?
+            viol_res, fulfill_res = check_trace_conformance(trace, constraint)
 
-            viol[trace][constr] = viol_res
+            viol[trace][constraint] = viol_res
 
-            fulfill[trace][constr] = fulfill_res
+            fulfill[trace][constraint] = fulfill_res
     
     return viol, fulfill
 
@@ -44,9 +44,9 @@ def check_trace_conformance(trace, constraint:Constraint):
     fulfillments = set()
     violations = set()
 
-    pending, fulfillments, violations = constraint.template.opening()
+    pending, fulfillments, violations = constraint.template.opening() ##change to correcnt template
     for e in trace:
-        pending, fulfillments = constraint.template.fullfillment(e, trace, pending, fulfillments, constraint.T, constraint.phi_a, constraint.phi_c, constraint.phi_tau)
+        pending, fulfillments = constraint.template.fullfillment(e, trace, pending, fulfillments, constraint.condition.T, constraint.phi_a, constraint.phi_c, constraint.phi_tau)
         pending, violations = constraint.template.violation(e, trace, pending, violations, constraint.T, constraint.phi_c, constraint.phi_tau)
         pending = constraint.template.activation(e, constraint.A, pending, constraint.phi_a)
 

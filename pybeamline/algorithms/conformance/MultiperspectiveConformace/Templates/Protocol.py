@@ -23,3 +23,15 @@ class Template(Protocol):
     def activation(self, e, A, pending, phi_a):
         
         return pending
+
+    def phi_activity(e):
+        return "name?"
+
+    def verify(phi_a, A):
+        return True
+
+    def verify(phi_c, A, B)
+        return True
+
+    def verify(phi_tau, A, B):
+        return True
