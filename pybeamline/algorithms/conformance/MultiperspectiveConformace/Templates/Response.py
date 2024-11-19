@@ -1,3 +1,5 @@
+from Protocol import Template as temp
+
 class Response():
 
     def phi_activity(e):
@@ -21,7 +23,7 @@ class Response():
         
         if (phi_activity(e) in T):
             for act in pending:
-                if (phi_c(act, e) and phi_tau(act,e)):
+                if (temp.verify(phi_c,act,e) and temp.verify(phi_tau, act,e)):
                     pending.remove(act)
                     fulfillments.add(act)
 
@@ -33,7 +35,7 @@ class Response():
 
     def activation(self, e, A, pending, phi_a):
 
-        if (phi_activity(e) in A and phi_a(e))
+        if (phi_activity(e) in A and temp.verify(phi_a,A))
             pending.add(e)
         
         return pending   
