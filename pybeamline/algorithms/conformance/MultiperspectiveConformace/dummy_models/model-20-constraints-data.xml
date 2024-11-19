@@ -1,0 +1,955 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model>
+	<assignment language="ConDec" name="hand made model">
+		<activitydefinitions>
+			<activity id="1" name="a10" />
+			<activity id="2" name="a1" />
+			<activity id="3" name="a3" />
+			<activity id="4" name="a2" />
+			<activity id="5" name="a5" />
+			<activity id="6" name="a4" />
+			<activity id="7" name="a7" />
+			<activity id="8" name="a6" />
+			<activity id="9" name="a9" />
+			<activity id="10" name="a8" />
+		</activitydefinitions>
+		<constraintdefinitions>
+			<constraint id="0" mandatory="true">
+				<condition>[A.concept:name == 'a2'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a2" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="1" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a2" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="2" mandatory="true">
+				<condition>[A.concept:name == 'a3'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a3" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="3" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a3" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="4" mandatory="true">
+				<condition>[A.concept:name == 'a4'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a4" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="5" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a4" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="6" mandatory="true">
+				<condition>[A.concept:name == 'a5'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a5" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="7" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a5" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="8" mandatory="true">
+				<condition>[A.concept:name == 'a6'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a6" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="9" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a6" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="10" mandatory="true">
+				<condition>[A.concept:name == 'a7'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a7" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="11" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a7" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="12" mandatory="true">
+				<condition>[A.concept:name == 'a8'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a8" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="13" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a8" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="14" mandatory="true">
+				<condition>[A.concept:name == 'a9'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a9" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="15" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a9" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="16" mandatory="true">
+				<condition>[A.concept:name == 'a10'][T.concept:name == 'a1'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a10" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="17" mandatory="true">
+				<condition>[A.concept:name == 'a1'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a1" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a10" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="18" mandatory="true">
+				<condition>[A.concept:name == 'a3'][T.concept:name == 'a2'][0,0,s]</condition>
+				<name>precedence</name>
+				<template>
+					<description>...</description>
+					<display>precedence</display>
+					<name>precedence</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a2" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a3" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+			<constraint id="19" mandatory="true">
+				<condition>[A.concept:name == 'a2'][T.concept:name == 'NaA'][0,10,d]</condition>
+				<name>response</name>
+				<template>
+					<description>...</description>
+					<display>response</display>
+					<name>response</name>
+					<text>...</text>
+					<parameters>
+						<parameter branchable="true" id="1" name="A">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="5" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+						<parameter branchable="true" id="2" name="B">
+							<graphical>
+								<style number="1" />
+								<begin fill="true" style="2" />
+								<middle fill="false" style="0" />
+								<end fill="false" style="0" />
+							</graphical>
+						</parameter>
+					</parameters>
+					<statemessages>
+						<message state="SATISFIED">...</message>
+						<message state="VIOLATED">...</message>
+						<message state="VIOLATED_TEMPORARY">...</message>
+					</statemessages>
+				</template>
+				<constraintparameters>
+					<parameter templateparameter="1">
+						<branches>
+							<branch name="a2" />
+						</branches>
+					</parameter>
+					<parameter templateparameter="2">
+						<branches>
+							<branch name="a3" />
+						</branches>
+					</parameter>
+				</constraintparameters>
+			</constraint>
+		</constraintdefinitions>
+		<graphical>
+			<activities>
+				<cell height="50.0" id="1" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="2" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="3" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="4" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="5" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="6" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="7" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="8" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="9" width="90.0" x="10.0" y="10.0" />
+				<cell height="50.0" id="10" width="90.0" x="10.0" y="10.0" />
+			</activities>
+			<constraints>
+				<cell height="1.0" id="0" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="1" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="2" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="3" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="4" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="5" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="6" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="7" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="8" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="9" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="10" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="11" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="12" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="13" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="14" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="15" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="16" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="17" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="18" width="1.0" x="55.0" y="35.0" />
+				<cell height="1.0" id="19" width="1.0" x="55.0" y="35.0" />
+			</constraints>
+		</graphical>
+	</assignment>
+</model>
