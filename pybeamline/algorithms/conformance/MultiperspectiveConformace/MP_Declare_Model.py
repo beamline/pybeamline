@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import re
 
 class Constraint_Condition():
-    def __init__(self, A:str, T:str, phi_a, phi_c, phi_tau) -> None:
+    def __init__(self, A:set, T:set, phi_a, phi_c, phi_tau) -> None:
         self.A = A
         self.T = T
         self.phi_a = phi_a
@@ -23,8 +23,9 @@ class Constraint_Condition():
         phi_match = re.search(phi_pattern, input_string)
         
         if A_match and T_match and phi_match:
-            A = A_match.group(1)
-            T = T_match.group(1)
+            # Horrible implementation, if there are more than one, but that doesnt apply to our current models in xml
+            A = set(A_match.group(1))
+            T = set(T_match.group(1))
             phi_a = int(phi_match.group(1))
             phi_c = int(phi_match.group(2))
             phi_tau = phi_match.group(3)
