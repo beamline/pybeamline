@@ -150,7 +150,14 @@ class MP_delcare_model:
         # Generate XML string
         return ET.tostring(model, encoding="unicode", method="xml")
                 
+    def add_constraint(self, constraint:Constraint):
+        self.constraints.append(constraint)
 
+    def remove_constraint(self, constraint):
+        self.constraints.remove(constraint) 
+
+    def get_constraints(self):
+        return self.constraints 
 
 
 if __name__ == "__main__":

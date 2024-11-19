@@ -1,22 +1,8 @@
 from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates import Template
-from MP_Declare_Model import Constraint
-
-class Model():
-    def __init__(self) -> None:
-        self.constraints = set()
-    
-    def add_constraint(self, constraint):
-        self.constraints.add(constraint)
-
-    def remove_constraint(self, constraint):
-        self.constraints.remove(constraint)
-
-    def get_constraints(self):
-        return self.constraints
-    
+from MP_Declare_Model import Constraint, MP_delcare_model
 
 # Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log
-def check_log_conformance(log, model: Model):
+def check_log_conformance(log, model: MP_delcare_model):
     viol = dict()
     fulfill = dict()
 
@@ -28,8 +14,7 @@ def check_log_conformance(log, model: Model):
         if trace not in fulfill:
             fulfill[trace] = dict()
 
-        for constr in model.get_constraints():
-            constraint = Constraint(constr) #not giving correct paramteters?
+        for constraint in model.get_constraints():
             viol_res, fulfill_res = check_trace_conformance(trace, constraint)
 
             viol[trace][constraint] = viol_res
