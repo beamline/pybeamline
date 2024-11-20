@@ -31,9 +31,9 @@ def check_trace_conformance(trace, constraint:Constraint):
 
     pending, fulfillments, violations = constraint.template.opening() ##change to correcnt template
     for e in trace:
-        pending, fulfillments = constraint.template.fullfillment(e, trace, pending, fulfillments, constraint.condition.T, constraint.phi_a, constraint.phi_c, constraint.phi_tau)
-        pending, violations = constraint.template.violation(e, trace, pending, violations, constraint.T, constraint.phi_c, constraint.phi_tau)
-        pending = constraint.template.activation(e, constraint.A, pending, constraint.phi_a)
+        pending, fulfillments = constraint.template.fullfillment(e, trace, pending, fulfillments, constraint.condition.T, constraint.condition.phi_a, constraint.condition.phi_c, constraint.condition.phi_tau)
+        pending, violations = constraint.template.violation(e, trace, pending, violations, constraint.condition.T, constraint.condition.phi_c, constraint.condition.phi_tau)
+        pending = constraint.template.activation(e, constraint.condition.A, pending, constraint.condition.phi_a)
 
     pending, violations = constraint.template.closing(pending, fulfillments, violations)
 
