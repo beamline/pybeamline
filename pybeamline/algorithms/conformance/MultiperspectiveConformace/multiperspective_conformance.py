@@ -46,6 +46,10 @@ if __name__ == "__main__":
     for trace in log:
         for e in trace:
             print(e)
+            break
 
-#    for constraint in model.constraints:
-#       print(constraint.condition)
+    for constraint in model.constraints:
+        print(constraint.condition)
+        break
+
+        

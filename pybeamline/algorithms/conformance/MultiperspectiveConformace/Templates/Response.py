@@ -35,7 +35,7 @@ class Response():
 
     def activation(self, e, A, pending, phi_a):
 
-        if (phi_activity(e) in A and temp.verify(phi_a,A))
+        if (phi_activity(e) in A and temp.verify(phi_a,A)):
             pending.add(e)
         
         return pending   
