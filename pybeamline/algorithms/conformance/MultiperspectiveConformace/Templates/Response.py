@@ -21,7 +21,7 @@ class Response():
 
     def fullfillment(self, e, trace, pending, fulfillments, T, phi_a, phi_c, phi_tau):
         
-        if (phi_activity(e) in T):
+        if (temp.phi_activity(e) in T):
             for act in pending:
                 if (temp.verify(phi_c,act,e) and temp.verify(phi_tau, act,e)):
                     pending.remove(act)
@@ -35,7 +35,7 @@ class Response():
 
     def activation(self, e, A, pending, phi_a):
 
-        if (phi_activity(e) in A and temp.verify(phi_a,A)):
+        if (temp.phi_activity(e) in A and temp.verify(phi_a,A)):
             pending.add(e)
         
         return pending   
