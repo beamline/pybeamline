@@ -35,7 +35,7 @@ class Template(Protocol):
         #evaluate: Set of activations satisfies activation condition
         return True
 
-    def verify(phi_c, A:set, B:set)
+    def verify(phi_c, A:set, B:set):
         #A and B are sets of attributes
         #phi_c is a correlation condition
         #TODO: evaluate phi_c with respect to the attributes defined in A and B
