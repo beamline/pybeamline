@@ -1,4 +1,3 @@
-from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates import Template
 from MP_Declare_Model import Constraint, MP_delcare_model
 from pm4py.objects.log.importer.xes import importer as xes_importer
 
@@ -42,7 +41,7 @@ def check_trace_conformance(trace, constraint:Constraint):
 
 if __name__ == "__main__":
     model = MP_delcare_model.from_xml("pybeamline/algorithms/conformance/MultiperspectiveConformace/dummy_models/model-10-constraints-data.xml")
-    log = xes_importer.apply("10-acts-25000-traces.xes")
+    log = xes_importer.apply("pybeamline/algorithms/conformance/MultiperspectiveConformace/dommy_logs/10-acts-25000-traces.xes")
 
     for trace in log:
         for e in trace:
