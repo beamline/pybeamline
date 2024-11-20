@@ -43,13 +43,9 @@ if __name__ == "__main__":
     model = MP_delcare_model.from_xml("pybeamline/algorithms/conformance/MultiperspectiveConformace/dummy_models/model-10-constraints-data.xml")
     log = xes_importer.apply("10-acts-25000-traces.xes")
 
-    for trace in log:
-        for e in trace:
-            print(e)
-            break
+    viol = dict()
+    fulfill = dict()
+    
+    viol, fulfill = check_log_conformance(log, model)
 
-    for constraint in model.constraints:
-        print(constraint.condition)
-        break
-
-        
+    print(fulfill)
