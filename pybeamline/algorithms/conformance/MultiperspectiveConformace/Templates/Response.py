@@ -1,4 +1,4 @@
-from Protocol import Template as temp
+import Protocol as temp
 
 class Response():
 
