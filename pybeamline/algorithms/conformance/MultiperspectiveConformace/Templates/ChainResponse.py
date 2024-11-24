@@ -1,4 +1,4 @@
-from Protocol import Template as temp
+from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates.TemplateProtocol import Template as temp
 
 def pi_activity(e):
     return e.name

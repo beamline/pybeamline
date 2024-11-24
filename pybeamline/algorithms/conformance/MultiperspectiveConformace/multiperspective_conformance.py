@@ -1,7 +1,6 @@
 from MP_Declare_Model import Constraint, MP_delcare_model
 from pm4py.objects.log.importer.xes import importer
 from Templates.Response import Response
-
 # Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log
 def check_log_conformance(log, model: MP_delcare_model):
     viol = dict()
