@@ -1,5 +1,5 @@
-from MP_Declare_Model import Constraint, MP_delcare_model
-from Templates.Response import Response
+from .MP_Declare_Model import Constraint, MP_delcare_model
+from .Templates.Response import Response
 from pybeamline.sources import xes_log_source_from_file
 # Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log
 def check_log_conformance(log, model: MP_delcare_model):
