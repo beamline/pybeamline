@@ -55,7 +55,7 @@ class MP_declare_constraintparameter:
         self.branches = branches
 
 class MP_delcare_model:
-    def __init__(self, name:str, language:str, activities, constraints:list[Constraint]) -> None:
+    def __init__(self, name:str, language:str, activities, constraints) -> None:
         self.name = name
         self.language = language
         self.activities = activities # type: ignore
