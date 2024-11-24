@@ -1,5 +1,7 @@
 from typing import Protocol
 
+
+
 class Template(Protocol):
 
     def __init__(self) -> None:

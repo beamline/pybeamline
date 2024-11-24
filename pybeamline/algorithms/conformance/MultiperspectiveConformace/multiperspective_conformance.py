@@ -1,4 +1,4 @@
-from MP_Declare_Model import Constraint, MP_delcare_model
+from .MP_Declare_Model import Constraint, MP_delcare_model
 from pm4py.objects.log.importer.xes import importer as xes_importer
 
 # Given a log and a model (a set of constraints), return the violations and fulfillments of the model on the log

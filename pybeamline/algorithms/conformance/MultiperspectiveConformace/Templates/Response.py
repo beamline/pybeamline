@@ -1,4 +1,4 @@
-import Protocol as temp
+from pybeamline.algorithms.conformance.MultiperspectiveConformace.Templates.TemplateProtocol import Template as temp
 
 class Response():
 

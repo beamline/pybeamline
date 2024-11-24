@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 import re
+from .Templates.Response import Response
+from .Templates.TemplateProtocol import Template
 
 class Constraint_Condition():
     def __init__(self, A:set, T:set, phi_a, phi_c, phi_tau) -> None:
@@ -84,7 +86,11 @@ class MP_delcare_model:
             constraint_name = constraint.find("name").text
 
             # Map to template class
-            constraint_template = constraint.find("template").text
+            if (constraint_name == "response"):
+                constraint_template = Response()
+            else:
+                constraint_template = Template()
+            
             # Map to condition class
             constraint_condition = Constraint_Condition.parse_string_to_constraint_condition(constraint.find("condition").text)
 
