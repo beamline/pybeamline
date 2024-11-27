@@ -10,6 +10,7 @@ from typing import List, Callable
 from pandas import DataFrame
 import pandas
 from pybeamline.mappers import sliding_window_to_log
+from pybeamline.mappers.sliding_window_to_log import list_to_log
 import pm4py
 
 def get_trace_conformance(
@@ -59,18 +60,6 @@ def observable_list_to_log() -> Callable[[Observable[List[BEvent]]], Observable[
         )
 
     return o2l
-
-# Shamelessly stolen from pybeamline (since it is not available from the import)
-def list_to_log(events: List[BEvent]) -> DataFrame:
-    list_of_events = []
-    for e in events:
-        data_attributes = e.event_attributes
-        data_attributes.update({"case:" + n: e.trace_attributes[n] for n in e.trace_attributes})
-        data_attributes.update({"process:" + n: e.process_attributes[n] for n in e.process_attributes})
-        list_of_events.append(data_attributes)
-    log = DataFrame(list_of_events)
-    return log
-
 
 
 
