@@ -37,7 +37,7 @@ def get_trace_conformance(
     
     # return results
     return conformance_result.get_metric(metric='state')
-    
 
-def convert_bevent_to_declare4py_event_log(event_stream: Observable[BEvent]):
-    event_stream.subscribe()
+
+def handle_event(event:BEvent) -> Observable[list[BEvent]]:
+    pass
