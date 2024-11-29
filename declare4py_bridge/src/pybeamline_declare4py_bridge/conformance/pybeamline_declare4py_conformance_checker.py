@@ -12,6 +12,7 @@ import pandas
 from pybeamline.mappers import sliding_window_to_log
 from pybeamline.mappers.sliding_window_to_log import list_to_log
 import pm4py
+from mappers.smart_cacher import Smart_Cacher
 
 class Pybeamline_Bridge_Conformance_Checker():
     def __init__(self, 
@@ -21,6 +22,7 @@ class Pybeamline_Bridge_Conformance_Checker():
                  activity_key:str = 'concept:name'):
         self.model = model
         self.event_stream = event_stream
+        self.smart_cacher = Smart_Cacher()
         self.timestamp_key = timestamp_key
         self.activity_key = activity_key
 
@@ -44,22 +46,25 @@ class Pybeamline_Bridge_Conformance_Checker():
 
     
     def __check_conformance_of_list(self, events:list[BEvent]):
-        event_log = pm4py.convert_to_event_log(events)
-        event_log._properties['pm4py:param:timestamp_key'] = self.timestamp_key
-        event_log._properties['pm4py:param:activity_key'] = self.activity_key
+        if len(events) > 0:
+            event_log = pm4py.convert_to_event_log(events)
+            event_log._properties['pm4py:param:timestamp_key'] = self.timestamp_key
+            event_log._properties['pm4py:param:activity_key'] = self.activity_key
 
-        # TODO: How do we want to handle logs? Put entire Observable into one log object, or split further?
-        declare_log:D4PyEventLog = D4PyEventLog(log=event_log) 
-        # Conformance Check on Eventlog
-        # TODO: What is consider_vacuity?
-        conformance_result = MPDeclareAnalyzer(
-            log=declare_log, 
-            declare_model=self.model,
-            consider_vacuity=False
-            ).run()
-        
-        # return results
-        return conformance_result.get_metric(metric='state')
+            # TODO: How do we want to handle logs? Put entire Observable into one log object, or split further?
+            declare_log:D4PyEventLog = D4PyEventLog(log=event_log)
+            # Conformance Check on Eventlog
+            # TODO: What is consider_vacuity?
+            conformance_result = MPDeclareAnalyzer(
+                log=declare_log, 
+                declare_model=self.model,
+                consider_vacuity=False
+                ).run()
+            
+            # return results
+            return conformance_result.get_metric(metric='state')
+        else:
+            return None
     
     def run_trace_conformance(self) -> Observable[pandas.DataFrame]:
 
@@ -68,7 +73,9 @@ class Pybeamline_Bridge_Conformance_Checker():
         
         # Generate Declare4py EventLog
         return self.event_stream.pipe(
-            self.__smart_cache(),
+            self.smart_cacher,
+            ops.filter(lambda events: len(events) > 0),
+            # For the conformance check 
             self.__observable_list_to_log(),
             ops.map(lambda events: conformance_check(events))
         )
@@ -96,10 +103,8 @@ if __name__ == "__main__":
     )
 
     observe_conformance = conformance_checker.run_trace_conformance()
-    observe_conformance.pipe(
-        ops.take(1)
-    ).subscribe(
-        lambda df: print(df),  # Print the resulting DataFrame
+    observe_conformance.subscribe(
+        lambda df: print(df) if df is not None else None,  # Print the resulting DataFrame
         lambda e: print(f"Error: {e}"),  # Handle any errors
         lambda: print("Conformance check completed!")  # Completion message
     )
