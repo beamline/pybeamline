@@ -1,33 +1,34 @@
+from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.age_cache_policy import \
+    AgeCachePolicy
+from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.size_cache_policy import \
+    SizeCachePolicy
+from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.base_cache_policy import BaseCachePolicy
 from pybeamline.bevent import BEvent
 from reactivex import Observable
-from reactivex import operators as ops
 from typing import List, Callable
 
 class Smart_Cacher:
 
-    def __init__(self) -> None:
+    def __init__(self, policy: BaseCachePolicy) -> None:
         self.cache: dict[str, list[BEvent]] = {}
+        self.policy = policy
 
     def __call__(self, event_stream: Observable[BEvent]):
         return event_stream.pipe(
             self.__add_event_to_cache()
         )
     
-    def __add_event(self, event:BEvent):
+    def __add_event(self, event: BEvent):
         event_trace = event.get_trace_name()
         # Check if trace already exists
         if event_trace not in self.cache:
             self.cache[event_trace] = []
         # Add event to list
         self.cache[event_trace].append(event)
+        self.cache[event_trace] = self.policy.apply(self.cache[event_trace])
+        return self.cache[event_trace]
 
-        # print(self.cache)
 
-        if len(self.cache[event_trace]) > 2:
-            return self.cache[event_trace]
-        else:
-            return []
-    
     def __add_event_to_cache(self) -> Callable[[Observable[BEvent]], Observable[List[BEvent]]]:
         def __add_to_cache(obs: Observable[BEvent]) -> Observable[List[BEvent]]:
             return obs.pipe(
@@ -40,19 +41,11 @@ class Smart_Cacher:
             print("Cache is empty.")
             return
 
-        longest_key = None
-        longest_length = 0
+        longest_key = max(self.cache, key=lambda k: len(self.cache[k]))
 
-        for key, event_list in self.cache.items():
-            if len(event_list) > longest_length:
-                longest_key = key
-                longest_length = len(event_list)
+        print(f"Key with the longest list: {longest_key}")
+        print(f"Length of the list: {len(self.cache[longest_key])}")
 
-        if longest_key is not None:
-            print(f"Key with the longest list: {longest_key}")
-            print(f"Length of the list: {longest_length}")
-        else:
-            print("No keys found in the cache.")
 
 
 if __name__ == "__main__":
@@ -67,7 +60,9 @@ if __name__ == "__main__":
     log_path = os.path.join("data/extension_log/extension-log-4.xes")
     event_stream = log_source(log_path)
 
-    smart_cache = Smart_Cacher()
+    smart_cache = Smart_Cacher(SizeCachePolicy(3))
+
+    smart_cache.print_longest_list_key()
 
     event_stream.pipe(
         smart_cache
@@ -76,4 +71,4 @@ if __name__ == "__main__":
     # for event in events:
     #     smart_cache.add_event_handler()
 
-    # smart_cache.print_longest_list_key()
+    #smart_cache.print_longest_list_key()

@@ -1,3 +1,5 @@
+from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.size_cache_policy import \
+    SizeCachePolicy
 from pybeamline.bevent import BEvent
 from Declare4Py.ProcessModels.DeclareModel import DeclareModel
 from Declare4Py.ProcessMiningTasks.ConformanceChecking.MPDeclareAnalyzer import MPDeclareAnalyzer
@@ -22,7 +24,7 @@ class Pybeamline_Bridge_Conformance_Checker():
                  activity_key:str = 'concept:name'):
         self.model = model
         self.event_stream = event_stream
-        self.smart_cacher = Smart_Cacher()
+        self.smart_cacher = Smart_Cacher(SizeCachePolicy(10))
         self.timestamp_key = timestamp_key
         self.activity_key = activity_key
 
