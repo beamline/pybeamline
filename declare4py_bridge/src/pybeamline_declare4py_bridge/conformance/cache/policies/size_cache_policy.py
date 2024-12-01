@@ -1,5 +1,7 @@
-from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.base_cache_policy import BaseCachePolicy
+# from base_cache_policy import BaseCachePolicy
+
 from pybeamline.bevent import BEvent
+from src.pybeamline_declare4py_bridge.conformance.mappers.policies.base_cache_policy import BaseCachePolicy
 
 
 class SizeCachePolicy(BaseCachePolicy):

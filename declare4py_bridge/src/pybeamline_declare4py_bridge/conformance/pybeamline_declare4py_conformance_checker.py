@@ -1,5 +1,3 @@
-from declare4py_bridge.src.pybeamline_declare4py_bridge.conformance.mappers.policies.size_cache_policy import \
-    SizeCachePolicy
 from pybeamline.bevent import BEvent
 from Declare4Py.ProcessModels.DeclareModel import DeclareModel
 from Declare4Py.ProcessMiningTasks.ConformanceChecking.MPDeclareAnalyzer import MPDeclareAnalyzer
@@ -14,7 +12,7 @@ import pandas
 from pybeamline.mappers import sliding_window_to_log
 from pybeamline.mappers.sliding_window_to_log import list_to_log
 import pm4py
-from mappers.smart_cacher import Smart_Cacher
+from cache.smart_cacher import Smart_Cacher, AgeAndSizePolicy, BaseCachePolicy, AgeCachePolicy, SizeCachePolicy
 
 class Pybeamline_Bridge_Conformance_Checker():
     def __init__(self, 
