@@ -12,7 +12,9 @@ import pandas
 from pybeamline.mappers import sliding_window_to_log
 from pybeamline.mappers.sliding_window_to_log import list_to_log
 import pm4py
-from cache.smart_cacher import Smart_Cacher, AgeAndSizePolicy, BaseCachePolicy, AgeCachePolicy, SizeCachePolicy
+from pybeamline_declare4py_bridge.conformance.cache.smart_cacher import Smart_Cacher, AgeAndSizePolicy, BaseCachePolicy, AgeCachePolicy, SizeCachePolicy
+# from cache.smart_cacher import \
+# Smart_Cacher, AgeAndSizePolicy, BaseCachePolicy, AgeCachePolicy, SizeCachePolicy
 
 
 class Pybeamline_Bridge_Conformance_Checker():
