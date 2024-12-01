@@ -14,6 +14,7 @@ from pybeamline.mappers.sliding_window_to_log import list_to_log
 import pm4py
 from cache.smart_cacher import Smart_Cacher, AgeAndSizePolicy, BaseCachePolicy, AgeCachePolicy, SizeCachePolicy
 
+
 class Pybeamline_Bridge_Conformance_Checker():
     def __init__(self, 
                  model: DeclareModel,
@@ -25,15 +26,7 @@ class Pybeamline_Bridge_Conformance_Checker():
         self.smart_cacher = Smart_Cacher(SizeCachePolicy(10))
         self.timestamp_key = timestamp_key
         self.activity_key = activity_key
-
-    @staticmethod
-    def __observable_list_to_log() -> Callable[[Observable[List[BEvent]]], Observable[DataFrame]]:
-        def o2l(obs: Observable[List[BEvent]]) -> Observable[DataFrame]:
-            return obs.pipe(
-                ops.map(lambda events: list_to_log(events))  # Directly convert each list of BEvent to a DataFrame
-            )
-
-        return o2l
+        self.case_id = None
 
     
     @staticmethod
@@ -45,14 +38,8 @@ class Pybeamline_Bridge_Conformance_Checker():
         return cache
 
     
-    def __check_conformance_of_list(self, events:list[BEvent]):
-        if len(events) > 0:
-            event_log = pm4py.convert_to_event_log(events)
-            event_log._properties['pm4py:param:timestamp_key'] = self.timestamp_key
-            event_log._properties['pm4py:param:activity_key'] = self.activity_key
-
-            # TODO: How do we want to handle logs? Put entire Observable into one log object, or split further?
-            declare_log:D4PyEventLog = D4PyEventLog(log=event_log)
+    def __check_conformance_of_list(self, declare_log:D4PyEventLog, case_id:str):
+        if declare_log.get_length() > 0:
             # Conformance Check on Eventlog
             # TODO: What is consider_vacuity?
             conformance_result = MPDeclareAnalyzer(
@@ -62,32 +49,46 @@ class Pybeamline_Bridge_Conformance_Checker():
                 ).run()
             
             # return results
-            return conformance_result.get_metric(metric='state')
+            df = conformance_result.get_metric(metric='state')
+            df['case_id'] = case_id
+            return df
         else:
             return None
     
     def run_trace_conformance(self) -> Observable[pandas.DataFrame]:
 
         def conformance_check(events: list[BEvent]):
-            return self.__check_conformance_of_list(events)
+            declare_log = pybeamline_to_declare4py_log(events)
+            return self.__check_conformance_of_list(declare_log, events.iloc[0]['case:concept:name'])
         
         # Generate Declare4py EventLog
         return self.event_stream.pipe(
             self.smart_cacher,
             ops.filter(lambda events: len(events) > 0),
             # For the conformance check 
-            self.__observable_list_to_log(),
+            ops.map(lambda events: list_to_log(events)),
             ops.map(lambda events: conformance_check(events))
         )
 
+def pybeamline_to_declare4py_log(events: List[BEvent], 
+                                 timestamp_key: str = "time:timestamp",
+                                 activity_key:str = 'concept:name'):
+    if len(events) > 0:
+        event_log = pm4py.convert_to_event_log(events)
+        event_log._properties['pm4py:param:timestamp_key'] = timestamp_key
+        event_log._properties['pm4py:param:activity_key'] = activity_key
+
+        # TODO: How do we want to handle logs? Put entire Observable into one log object, or split further?
+        return D4PyEventLog(log=event_log)
+    else:
+        return D4PyEventLog(log=None)
 
 if __name__ == "__main__":
     import os
     from Declare4Py.ProcessMiningTasks.Discovery.DeclareMiner import DeclareMiner
     from pybeamline.sources import log_source
     import warnings
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    warnings.filterwarnings("ignore")
 
 
     log_path = os.path.join("data/extension_log/extension-log-4.xes")
@@ -103,8 +104,11 @@ if __name__ == "__main__":
     )
 
     observe_conformance = conformance_checker.run_trace_conformance()
-    observe_conformance.subscribe(
+    observe_conformance.pipe(
+        # ops.take(1)
+    ).subscribe(
         lambda df: print(df) if df is not None else None,  # Print the resulting DataFrame
+        # lambda df: df.to_csv('output.csv'),
         lambda e: print(f"Error: {e}"),  # Handle any errors
         lambda: print("Conformance check completed!")  # Completion message
     )
