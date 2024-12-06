@@ -30,11 +30,12 @@ def simple_dfg_miner(
         latest_event[case_id] = activity_name
 
         observed_events += 1
-        if observed_events % model_update_frequency == 0:
+        if observed_events % model_update_frequency == 0 and len(complete_dfg) > 0:
             max_frequency = max(complete_dfg.values())
-            return {k: v/max_frequency for k, v in complete_dfg.items() if v/max_frequency > min_relative_frequency}
-        else:
-            return None
+            if max_frequency > 0:
+                m = {k: v/max_frequency for k, v in complete_dfg.items() if v/max_frequency > min_relative_frequency}
+                return m
+        return None
 
     return lambda stream: stream.pipe(
         ops.map(miner),

@@ -46,16 +46,17 @@ def dfg_to_graphviz(dfg):
     """
     # Add all regular edges
     for (source, target), weight in dfg.items():
-        graphviz += f'"{source}" -> "{target}" [penwidth={ max(0.5, min(5 * weight, 5)) },label="{weight}"];\n'
+        graphviz += f'"{source}" -> "{target}" [penwidth={ max(0.5, min(5 * weight, 5)) },label="{ round(weight, 2) }"];\n'
 
     # Add edges to start and end nodes for all nodes that have no incoming or outgoing edges
     start_nodes = {source for source, target in dfg.keys()}
     end_nodes = {target for source, target in dfg.keys()}
     for (source, target) in dfg.keys():
-        if source in end_nodes:
-            end_nodes.remove(source)
-        if target in start_nodes:
-            start_nodes.remove(target)
+        if source != target:
+            if source in end_nodes:
+                end_nodes.remove(source)
+            if target in start_nodes:
+                start_nodes.remove(target)
     for node in start_nodes:
         graphviz += f'start -> "{node}" [penwidth = 2, style = dashed, color = "#ACB89C"];\n'
     for node in end_nodes:
