@@ -2,6 +2,7 @@ pm4py==2.7.4
 reactivex==4.0.4
 paho-mqtt==2.1.0
 pandas~=2.2.3
+pyais~=2.8.2
 setuptools~=68.0.0
 requests~=2.31.0
 objsize~=0.7.0
