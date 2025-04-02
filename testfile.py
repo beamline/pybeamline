@@ -1,63 +1,105 @@
+import random
 import uuid
+from itertools import chain
+
 from pm4py import OCEL, ocel_sort_by_additional_column, discover_ocdfg, read_ocel2, read_ocel2_json, \
     discover_oc_petri_net, view_ocpn
 from reactivex.operators import window_with_count, flat_map, to_list
-from reactivex import operators as ops
+from reactivex import operators as ops, concat
 from pm4py.algo.discovery.ocel.ocdfg import algorithm as ocdfg_discovery
 from pm4py.objects.ocel.obj import OCEL
 from pm4py.algo.discovery.ocel.ocpn import algorithm as ocpn_discovery
+from river import drift
+
 from pybeamline.mappers import sliding_window_to_log
+from pybeamline.mappers.sliding_window_to_ocel import log_to_ocel_operator
 
-from pybeamline.sources.ocel_json_log_source import ocel_json_log_source_from_file
-import pandas as pd
-from pandas import DataFrame
+from pybeamline.sources.string_ocel_test_source import dict_test_ocel_source
 
-def extract_object_table(events_df: DataFrame) -> pd.DataFrame:
-    object_list = []
-    for omap in events_df["ocel:omap"]:
-        for obj in omap:
-            object_list.append({
-                "ocel:oid": obj["ocel:oid"],
-                "ocel:type": obj["ocel:type"]
-            })
-    return pd.DataFrame(object_list).drop_duplicates()
+test_events_1 = [
+    {"activity": "Create Order", "objects": {"Order": ["o1"]}},
+    {"activity": "Add Item", "objects": {"Order": ["o1"], "Item": ["i1"]}},
+    {"activity": "Approve Order", "objects": {"Order": ["o1"]}},
+    {"activity": "Pack Items", "objects": {"Order": ["o1"], "Item": ["i1"], "Package": ["p1"]}},
+    {"activity": "Ship Order", "objects": {"Order": ["o1"], "Shipment": ["s1"]}},
+    {"activity": "Invoice Order", "objects": {"Order": ["o1"], "Invoice": ["inv1"]}},
+]
 
-def discover_ocpn_per_window():
-    return ops.map(lambda ocel: ocpn_discovery.apply(ocel))
+test_events_2 = [
+    {"activity": "Create Order", "objects": {"Order": ["o2"]}},
+    {"activity": "Add Digital Product", "objects": {"Order": ["o2"], "DigitalItem": ["di1"]}},
+    {"activity": "Approve Order", "objects": {"Order": ["o2"]}},
+    {"activity": "Activate License", "objects": {"Order": ["o2"], "DigitalItem": ["di1"], "License": ["lic1"]}},
+    {"activity": "Send Download Link", "objects": {"Order": ["o2"], "DigitalItem": ["di1"]}},
+    {"activity": "Invoice Order", "objects": {"Order": ["o2"], "Invoice": ["inv2"]}},
+]
 
-def discover_ocdfg_per_window():
-    return ops.map(lambda df: ocdfg_discovery.apply(OCEL(events=df)))
-
-def extract_relations_table(events_df: DataFrame) -> pd.DataFrame:
-    rows = []
-    for _, row in events_df.iterrows():
-        for obj in row["ocel:omap"]:
-            rows.append({
-                "ocel:eid": row["ocel:eid"],
-                "ocel:activity": row["ocel:activity"],
-                "ocel:timestamp": row["ocel:timestamp"],
-                "ocel:oid": obj["ocel:oid"],
-                "ocel:type": obj["ocel:type"]
-            })
-    return pd.DataFrame(rows)
-
-def events_df_to_minimal_ocel(events_df: DataFrame) -> OCEL:
-    if "ocel:eid" not in events_df.columns:
-        events_df["ocel:eid"] = [str(uuid.uuid4()) for _ in range(len(events_df))]
-    # Extract the object table from the events DataFrame
-    objects_df = extract_object_table(events_df)
-    # Create the relations DataFrame
-    relations_df = extract_relations_table(events_df)
-
-    res = OCEL(events=events_df, objects=objects_df, relations=relations_df)
-    return res
+combined_log = dict_test_ocel_source([(test_events_1, 100), (test_events_2, 500), (test_events_1,100)], shuffle=True)
 
 
-log_source = ocel_json_log_source_from_file('tests/ocel.jsonocel')
+pattern = ("Approve Order", "Pack Items")
 
-log_source.pipe(
-    window_with_count(1000),
-    sliding_window_to_log(),
-    ops.map(events_df_to_minimal_ocel),
-    discover_ocpn_per_window()
-).subscribe(lambda x: view_ocpn(x))
+def object_centric_pattern_detector(activity_pair):
+    def _op(obs):
+        return obs.pipe(
+            ops.do_action(lambda x: print(f"🔬 Inside detector: {x.get_event_name()}")),
+            ops.buffer_with_count(2, 1),
+            ops.filter(lambda pair: (
+                pair[0].get_event_name() == activity_pair[0] and
+                pair[1].get_event_name() == activity_pair[1] and
+                any(obj in pair[0].get_object_ids() for obj in pair[1].get_object_ids())
+            )),
+            ops.do_action(lambda pair: print(f"🎯 Matched pair: {pair[0].get_event_name()} → {pair[1].get_event_name()}")),
+            ops.count()
+        )
+    return _op
+
+
+from river import drift
+
+drift_detector = drift.ADWIN()
+drift_points = []
+
+def check_for_drift():
+    index = 0
+    def _process(x):
+        nonlocal index
+        drift_detector.update(x)
+        index += 1
+        if drift_detector.drift_detected:
+            drift_points.append(index)
+            print(f"🚨 Drift detected at window index {index} (pattern count: {x})")
+    return ops.do_action(_process)
+
+import reactivex
+from reactivex import operators as ops
+
+combined_log.pipe(
+    ops.buffer_with_count(4),
+    ops.flat_map(lambda window: reactivex.from_iterable(window).pipe(
+        object_centric_pattern_detector(pattern)
+    )),
+    ops.do_action(lambda x: print(f"📊 Pattern count in window: {x}")),
+    check_for_drift()
+).subscribe(lambda x: print(f"✅ Final output: {x}"))
+
+#combined_log.pipe(
+#    ops.do_action(lambda x: print(f"🔄 Passing through: {x.get_event_name()}")),
+#    ops.buffer_with_count(4),
+#    ops.do_action(lambda x: print(f"🧩 Buffered window: {[e.get_event_name() for e in x]}")),
+#    ops.flat_map(lambda window: reactivex.from_iterable(window).pipe(
+#        object_centric_pattern_detector(pattern)
+#    )),
+#    ops.do_action(lambda x: print(f"📊 Pattern count in window: {x}")),
+#    check_for_drift()
+#).subscribe(lambda x: print(f"✅ Final output: {x}"))
+
+#combined_log.pipe(
+#    ops.do_action(lambda e: print(f"🔄 Event flowing in: {e.get_event_name()}")),
+#    ops.buffer_with_count(4),
+#    ops.flat_map(lambda window: reactivex.from_iterable(window).pipe(
+#        ops.do_action(lambda e: print(f"🔍 Event: {e.get_event_name()}, Objects: {e.get_object_ids()}")),
+#        object_centric_pattern_detector(pattern)
+#    )),
+#    check_for_drift()
+#).subscribe(lambda count: print(f"✅ Pattern count: {count}"))
