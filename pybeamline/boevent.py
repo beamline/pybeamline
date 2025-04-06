@@ -28,10 +28,13 @@ class BOEvent(AbstractEvent):
         return self.event_attributes[DEFAULT_EVENT_TIMESTAMP]
 
     def get_object_ids(self):
-        return [obj['id'] for obj in self.ocel_omap]
+        return [obj['ocel:oid'] for obj in self.ocel_omap]
 
     def get_object_types(self):
-        return [obj['type'] for obj in self.ocel_omap]
+        return [obj['ocel:type'] for obj in self.ocel_omap]
+
+    def get_object_refs(self):
+        return self.ocel_omap
 
     def __str__(self):
         return f"({self.get_event_id()}, {self.get_event_name()}, {self.get_event_time()}, {self.ocel_omap})"

@@ -1,41 +1,53 @@
 import random
 from datetime import datetime
-from pybeamline.boevent import BOEvent
-from reactivex import Observable
+from typing import List, Tuple, Optional
+from reactivex import Observable, abc
 from reactivex.disposable import CompositeDisposable
+from pybeamline.boevent import BOEvent
 
 
-def dict_test_ocel_source(flows_with_counts, shuffle=False) -> Observable[BOEvent]:
-    """
-    Accepts a list of (event_list, count) tuples.
-    Expands and emits BOEvent instances.
-    """
-    all_events = []
-    event_counter = 0
+def generate_shuffled_traces(flows: List[Tuple[List[dict], int]], shuffle: bool = True) -> List[dict]:
+    all_traces = []
+    trace_id = 0
 
-    for event_flow, repetitions in flows_with_counts:
+    for flow_template, repetitions in flows:
         for _ in range(repetitions):
-            for event in event_flow:
-                object_refs = [
+            trace = []
+            suffix = f"{trace_id}"
+            for event in flow_template:
+                updated_event = {
+                    "activity": event["activity"],
+                    "objects": {
+                        obj_type: [f"{oid}_{suffix}" for oid in obj_ids]
+                        for obj_type, obj_ids in event["objects"].items()
+                    }
+                }
+                trace.append(updated_event)
+            all_traces.append(trace)
+            trace_id += 1
+
+    if shuffle:
+        random.shuffle(all_traces)
+
+    return [event for trace in all_traces for event in trace]
+
+
+def dict_test_ocel_source(flows: List[Tuple[List[dict], int]], shuffle: bool = False, scheduler: Optional[abc.SchedulerBase] = None) -> Observable[BOEvent]:
+    def subscribe(observer: abc.ObserverBase[BOEvent], scheduler_: Optional[abc.SchedulerBase] = None) -> abc.DisposableBase:
+        all_events = generate_shuffled_traces(flows, shuffle=shuffle)
+        for idx, event in enumerate(all_events):
+            bo_event = BOEvent(
+                event_id=f"e{idx}",
+                activity_name=event["activity"],
+                timestamp=datetime.now(),
+                object_refs=[
                     {"ocel:oid": oid, "ocel:type": obj_type}
                     for obj_type, ids in event["objects"].items()
                     for oid in ids
                 ]
-                bo_event = BOEvent(
-                    event_id=f"e{event_counter}",
-                    activity_name=event["activity"],
-                    timestamp=datetime.now(),
-                    object_refs=object_refs
-                )
-                all_events.append(bo_event)
-                event_counter += 1
+            )
+            observer.on_next(bo_event)
 
-    if shuffle:
-        random.shuffle(all_events)
-
-    def subscribe(observer, scheduler=None):
-        for e in all_events:
-            observer.on_next(e)
         observer.on_completed()
         return CompositeDisposable()
 
