@@ -15,8 +15,8 @@ def simple_dfg_miner(
 
     def miner(event: BEvent) -> Observable:
         nonlocal observed_events
-        nonlocal latest_event
-        nonlocal complete_dfg
+        nonlocal latest_event # noqa: F824
+        nonlocal complete_dfg # noqa: F824
 
         activity_name = event.get_event_name()
         case_id = event.get_trace_name()
