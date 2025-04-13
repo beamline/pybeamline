@@ -5,3 +5,6 @@ pybeamline.egg-info
 build
 .venv
 .ipynb_checkpoints/
+/.coverage
+htmlcov/
+coverage.xml
