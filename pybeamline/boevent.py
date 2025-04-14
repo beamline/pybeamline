@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import List
+
 from pybeamline.abstractevent import AbstractEvent
 
 DEFAULT_EVENT_ID = "ocel:eid"
@@ -17,6 +19,18 @@ class BOEvent(AbstractEvent):
             DEFAULT_EVENT_TIMESTAMP: datetime.now() if not timestamp else timestamp
         }
         self.ocel_omap = object_refs or []  # List of dicts: [{"id": "O-123", "type": "Order"}]
+
+    def flatten(self) -> List["BOEvent"]:
+        """ Flattens the event into a list of BOEvent objects based on the object references. """
+        return [
+            BOEvent(
+                event_id=self.event_attributes[DEFAULT_EVENT_ID],
+                activity_name=self.event_attributes[DEFAULT_EVENT_ACTIVITY],
+                timestamp=self.event_attributes[DEFAULT_EVENT_TIMESTAMP],
+                object_refs=[obj]
+            )
+            for obj in self.ocel_omap
+        ]
 
     def get_event_id(self):
         return self.event_attributes[DEFAULT_EVENT_ID]
