@@ -32,16 +32,14 @@ class OCOperator:
                 ops.do_action(lambda _: print("Here")),
                 ops.do_action(self._route_to_miner),
                 #ops.ignore_elements(),  # This op doesn’t emit, miners will
-                #ops.merge(*self.outputs)
+                ops.merge(*self.outputs)
             )
 
         return _route_and_process
 
     def _route_to_miner(self, flat_event: BOEvent):
         # Determine object type of the flattened event
-        print("Routing event to miner")
-        print(flat_event)
-        object_type = flat_event.ocel_omap[0]["type"]
+        object_type = flat_event.ocel_omap[0]["ocel:type"]
         if object_type in self.subjects:
             self.subjects[object_type].on_next(flat_event)
 
