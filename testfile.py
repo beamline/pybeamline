@@ -3,6 +3,8 @@ from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import o
 from pybeamline.algorithms.oc_operator import OCOperator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.dict_to_ocel import dict_test_ocel_log
+from pybeamline.utils.ocdfg_merger import OCDFGMerger
+from reactivex import operators as ops
 
 test_events_phaseflow = [
     {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
@@ -23,22 +25,24 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow, 10)], shuffle=False)
+combined_log = dict_test_ocel_source([(test_events_phaseflow, 1)], shuffle=False)
 
 test_log = dict_test_ocel_log([(test_events_phaseflow, 10)], shuffle=False)
 
 
 control_flow = {
-    "Order": oc_heuristics_miner_lossy_counting(model_update_frequency=4),
-    #"Item": oc_heuristics_miner_lossy_counting(model_update_frequency=1),
+    "Order": oc_heuristics_miner_lossy_counting(model_update_frequency=2),
+    "Item": oc_heuristics_miner_lossy_counting(model_update_frequency=2),
 }
 
 oc_operator = OCOperator(control_flow)
+oc_merger = OCDFGMerger()
 
 # pipe the combined log to the OCOperator op
 combined_log.pipe(
-    oc_operator.op()
-).subscribe(lambda x: print(f"Received: {x}"))
+    oc_operator.op(),
+    ops.do_action(lambda x: print("OCOperator output: ", str(x))),
+).subscribe(lambda x: oc_merger.merge(x))
 
 
 

@@ -18,7 +18,12 @@ class OCOperator:
 
         # Each miner gets its subject's stream piped through its operator
         self.outputs = [
-            self.subjects[obj_type].pipe(miner)
+            self.subjects[obj_type].pipe(
+                ops.do_action(lambda x: print(f"Miner {obj_type} input: {x}")),
+                miner,
+                ops.map(lambda model: {"object_type": obj_type, "model": model}), # Maps the output to include the object type
+                ops.do_action(lambda x: print(f"Miner {obj_type} output: {x}")),
+                )
             for obj_type, miner in control_flow.items()
         ]
 
@@ -29,9 +34,8 @@ class OCOperator:
         def _route_and_process(event_stream):
             return event_stream.pipe(
                 ops.flat_map(lambda event: event.flatten()),
-                ops.do_action(lambda _: print("Here")),
                 ops.do_action(self._route_to_miner),
-                #ops.ignore_elements(),  # This op doesn’t emit, miners will
+                ops.ignore_elements(),  # Ignores events with type not in control flow
                 ops.merge(*self.outputs)
             )
 
@@ -41,6 +45,7 @@ class OCOperator:
         # Determine object type of the flattened event
         object_type = flat_event.ocel_omap[0]["ocel:type"]
         if object_type in self.subjects:
+            print(f"[ROUTER] Event routed to: {object_type}")
             self.subjects[object_type].on_next(flat_event)
 
 
