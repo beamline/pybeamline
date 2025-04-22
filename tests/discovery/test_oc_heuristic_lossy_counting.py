@@ -7,7 +7,6 @@ class TestOCHeuristicsMinerLossyCounting(TestCase):
 
     def test_get_single_trace_sequencing(self):
         miner = OCHeuristicsMinerLossyCounting(max_approx_error=0.1)
-
         events = [
             BOEvent("e1", "A", datetime(2025, 1, 1), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
             BOEvent("e2", "B", datetime(2025, 1, 2), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
@@ -80,3 +79,4 @@ class TestOCHeuristicsMinerLossyCounting(TestCase):
         model = miner.get_model()
         dfg = model.dfg
         self.assertEqual(("X", "A") in dfg and ("X","B") in dfg, True)
+
