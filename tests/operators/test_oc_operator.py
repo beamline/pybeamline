@@ -3,7 +3,7 @@ import unittest
 from pybeamline.algorithms.oc_operator import OCOperator
 
 
-class TestOCOperator(unittest.TestCase):
+class TestOCOperator():
     def setUp(self):
         # Initialize the OCOperator with a mock control flow
         self.operator_with_cf = OCOperator(control_flow={
@@ -13,7 +13,7 @@ class TestOCOperator(unittest.TestCase):
         self.operator_without_cf = OCOperator()
 
     def test_oc_operator(self):
-        # Check if the operator is initialized correctly with control flow
+       # Check if the operator is initialized correctly with control flow
         self.assertIsInstance(self.operator_with_cf, OCOperator)
         self.assertFalse(self.operator_with_cf.dynamic_mode)
 

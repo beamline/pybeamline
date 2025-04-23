@@ -4,34 +4,25 @@ from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import O
 from unittest import TestCase
 
 class TestOCHeuristicsMinerLossyCounting(TestCase):
+    def setUp(self):
+        self.miner = OCHeuristicsMinerLossyCounting(max_approx_error=0.1)
 
-    def test_get_single_trace_sequencing(self):
-        miner = OCHeuristicsMinerLossyCounting(max_approx_error=0.1)
-        events = [
-            BOEvent("e1", "A", datetime(2025, 1, 1), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
-            BOEvent("e2", "B", datetime(2025, 1, 2), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
-            BOEvent("e3", "C", datetime(2025, 1, 3), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
-        ]
-        for e in events:
-            miner.ingest_event(e)
-
-        model = miner.get_model()
-        edges = model.dfg
-        self.assertEqual(("A","B") in edges, True)
-        self.assertEqual(("B","C") in edges, True)
-
-    def test_get_self_loop(self):
-        miner = OCHeuristicsMinerLossyCounting(max_approx_error=0.1)
+    def test_selfLoop_and_sequencing(self):
         events = [
             BOEvent("e1", "A", datetime(2025, 1, 1), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
             BOEvent("e2", "A", datetime(2025, 1, 2), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
+            BOEvent("e3", "A", datetime(2025, 1, 3), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
+            BOEvent("e4", "B", datetime(2025, 1, 4), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
+            BOEvent("e5", "C", datetime(2025, 1, 5), [{"ocel:oid": "o1", "ocel:type": "Order"}]),
         ]
         for e in events:
-            miner.ingest_event(e)
+            self.miner.ingest_event(e)
 
-        model = miner.get_model()
+        model = self.miner.get_model()
         edges = model.dfg
         self.assertEqual(("A","A") in edges, True)
+        self.assertEqual(("A","B") in edges, True)
+        self.assertEqual(("B","C") in edges, True)
 
     def test_and_split_discovery(self):
         miner = OCHeuristicsMinerLossyCounting(
