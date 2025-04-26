@@ -4,6 +4,36 @@ from reactivex import operators as ops
 from reactivex.subject import Subject
 from typing import Callable, Dict
 
+def oc_operator(control_flow: Dict[str, Callable] = None) -> Callable:
+    """
+    Creates an object-centric operator for processing streams of BOEvents.
+    Reactive operator that routes incoming events to the appropriate miner
+    based on the object type. If a miner is not registered for an object type,
+    it will be auto-registered.
+
+    :param control_flow: (Optional[Dict[str, Callable]]):
+    A mapping from object type names to their mining operators.
+    If None, dynamic discovery will be enabled and default miners used.
+
+    :return:
+    Callable: A streaming operator that takes a stream of events and outputs discovered object specific DFG updates.
+    """
+    # Validate control_flow
+    if control_flow is not None and not isinstance(control_flow, dict):
+        raise ValueError("control_flow must be a dictionary mapping object types to miner functions.")
+    for key, value in (control_flow or {}).items():
+        if not isinstance(value, Callable):
+            raise ValueError(
+                f"control_flow values must be callables (stream operators), got {type(value).__name__} for object type '{key}'")
+
+    if control_flow is None:
+        oc_op = OCOperator()
+    else:
+        oc_op = OCOperator(control_flow=control_flow)
+
+    return oc_op.op()
+
+
 DEFAULT = object()
 
 class OCOperator:
@@ -45,7 +75,7 @@ class OCOperator:
                 return  # Ignore unknown types in static mode
 
         self.subjects[object_type].on_next(flat_event)
-        #print("[OCOperator] Routed event to miner:" + str(flat_event) + "miner: " + str(object_type))
+
 
     def op(self) -> Callable:
         def _route_and_process(event_stream):

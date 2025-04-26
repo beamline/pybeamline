@@ -64,7 +64,6 @@ class TestOCOperator(unittest.TestCase):
             {"activity": "Add Item", "objects": {"Order": ["o1"], "Item": ["i2"]}},
             {"activity": "Ship Order", "objects": {"Item": ["i1","i2"], "Order": ["o1"], "Shipment": ["s1"]}},
         ]
-
         # Generate OCEL source from the events
         ocel_source = dict_test_ocel_source([(events,50)], shuffle=True) # Default lossy counting parameters Model_update_frequency=10
         emitted_models = []
@@ -75,9 +74,8 @@ class TestOCOperator(unittest.TestCase):
         )
         # Check if the number of emitted models matches the expected count
         self.assertEqual(len(emitted_models), 11)
-
+        # Check if the control flow is empty
+        self.assertEqual(self.operator_without_cf.control_flow, {})
         for dictModel in emitted_models:
-            # Check if the object type is equal to keys of the control flow
-            # TODO: Check if the object type is equal to keys of the control flow
             # Check if the generated model is a HeuristicsNet
             self.assertIsInstance(dictModel["model"], HeuristicsNet)

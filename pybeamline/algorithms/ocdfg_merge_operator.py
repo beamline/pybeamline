@@ -10,22 +10,12 @@ def ocdfg_merge_operator(merger: OCDFGMerger = None) -> Callable[[Observable], O
     into a ODFM structure, using OCDFGMerger.
 
     :param merger: Optional pre-initialized OCDFGMerger
-    :return: RxPy operator (function)
+    :return: RxPy operator (function) which is a MergedOCDFG
     """
     if merger is None:
         merger = OCDFGMerger()
 
-    def _merge_if_changed(model_dict):
-        obj_type = model_dict["object_type"]
-        model = model_dict["model"]
-        if merger.should_update(obj_type, model):
-            merger.merge(model_dict)
-            return model_dict  # only emit if changed
-        return None  # filtered out
-
-
-
     return lambda stream: stream.pipe(
-        ops.map(_merge_if_changed),
-        ops.filter(lambda x: x is not None)
+        ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
+        ops.map(lambda model_dict: merger.merge(model_dict["object_type"], model_dict["model"]))
     )

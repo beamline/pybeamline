@@ -4,6 +4,7 @@ from PIL import Image
 
 from graphviz import Digraph
 import random
+from pybeamline.objects.dfm import DFM
 
 class OCDFGVisualizer:
     def __init__(self):
@@ -13,7 +14,7 @@ class OCDFGVisualizer:
         self.current_index = 0
         self.snapshot_dir = os.path.join(os.getcwd(), "snapshots")
 
-    def _get_color(self, obj_type):
+    def _get_color(self, obj_type: str):
         if obj_type not in self.object_type_colors:
             color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             while color in self.object_type_colors.values():
@@ -21,17 +22,17 @@ class OCDFGVisualizer:
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
-    def draw(self, odfm):
+    def draw(self, dfm: DFM) -> Digraph:
         """
-        Generates the Graphviz Digraph object for the given ODFM.
-        Does not render or save — use `render()` for that.
+        :param dfm: Directly-Follows Multigraph (DFM) object
+        :return: Graphviz Digraph object
         """
         dot = Digraph(format="png")
         all_sources_by_type = {}
         all_targets_by_type = {}
         all_activities_by_type = {}
 
-        for a1, obj_type, a2 in odfm:
+        for a1, obj_type, a2 in dfm:
             color = self._get_color(obj_type)
             dot.edge(a1, a2, label=obj_type, color=color)
             all_sources_by_type.setdefault(obj_type, set()).add(a1)
@@ -59,26 +60,28 @@ class OCDFGVisualizer:
 
         return dot
 
-    def render(self, odfm):
+    def render(self, dfm: DFM):
         """
         Renders the ODFM using Graphviz.
-        :param odfm:
+        :param dfm:
         :return: Rendered Graphviz Digraph object
         """
-        dot = self.draw(odfm)
+        dot = self.draw(dfm)
         dot.view(cleanup=True)
 
-    def save(self, odfm, filename, format="png"):
+    def save(self, dfm: DFM, filename, format="png"):
         """
         Saves the ODFM to a file using Graphviz.
+        :param dfm:
         :param odfm:
         :param filename:
         :param format: Format of the output file (e.g., 'png', 'pdf')
         :return: saved file
         """
-        dot = self.draw(odfm)
+        dot = self.draw(dfm)
         filepath = os.path.join(self.snapshot_dir, f"{filename}_{self.counter}")
         rendered = dot.render(filepath, cleanup=True, view=False)
+        self.snapshots.append(rendered)
         self.snapshots.append(rendered)
         self.counter += 1
 

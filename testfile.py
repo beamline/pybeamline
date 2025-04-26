@@ -1,7 +1,8 @@
 from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import oc_heuristics_miner_lossy_counting
-from pybeamline.algorithms.oc_operator import OCOperator
+from pybeamline.algorithms.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.objects.ocdfgvisualizer import OCDFGVisualizer
+from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_json_log_source import ocel_json_log_source_from_file
 from pybeamline.utils.ocdfg_merger import OCDFGMerger
 
@@ -24,39 +25,31 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
-combined_log = ocel_json_log_source_from_file('tests/logistics.jsonocel')
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
+#combined_log = ocel_json_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
 
 control_flow = {
-    "Order": oc_heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Item": oc_heuristics_miner_lossy_counting(model_update_frequency=10),
-    "Customer": oc_heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    "Order": oc_heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
+    "Item": oc_heuristics_miner_lossy_counting(model_update_frequency=5),
+    "Customer": oc_heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
     "Shipment": oc_heuristics_miner_lossy_counting(model_update_frequency=1),
     "Invoice": oc_heuristics_miner_lossy_counting(model_update_frequency=1),
 }
 
-oc_operator = OCOperator()
+
 oc_merger = OCDFGMerger()
 oc_visualizer = OCDFGVisualizer()
 
-
-# visualize the OCDFG structure
-oc_merger.on_change(lambda odfm: oc_visualizer.save(
-    odfm,
-    "ocdfg_structure.png",
-))
-
-
 # pipe the combined log to the OCOperator op
 combined_log.pipe(
-    oc_operator.op(),
-    ocdfg_merge_operator(oc_merger)
-).subscribe()
+    oc_operator(control_flow),
+    ocdfg_merge_operator()
+).subscribe(lambda x: print(x))
 
-oc_visualizer.export_gif("ocdfg_evolution.gif", duration=1500)
+
 #dot = visualize_ocdfg_structure(edges)
 #dot.render('ocdfg', view=True)
 
