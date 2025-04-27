@@ -8,7 +8,7 @@ class DFM:
 
     - Nodes are activity labels (strings).
     - Edges are triples: (source activity, object type, target activity).
-     """
+    """
     def __init__(self):
         self.nodes: set[str] = set()
         self.edges: set[Tuple[str, str, str]] = set() # (source_activity, object_type, target_activity)
@@ -19,6 +19,12 @@ class DFM:
         """
         self.edges.add((source_activity, object_type, target_activity))
         self.nodes.update([source_activity, target_activity])
+
+    def get_edges(self) -> set[Tuple[str, str, str]]:
+        """
+        Get all edges in the DFM.
+        """
+        return self.edges
 
     def __str__(self):
         """

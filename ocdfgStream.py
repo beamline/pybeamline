@@ -25,8 +25,8 @@ test_events_phaseflow = [
 combined_log = dict_test_ocel_source([(test_events_phaseflow, 1)], shuffle=True)
 test_log = dict_test_ocel_log([(test_events_phaseflow, 1)], shuffle=False)
 
-ocdfg = ocdfg_discovery.apply(test_log)
-view_ocdfg(ocdfg)
+dfg = ocdfg_discovery.apply(test_log)
+view_ocdfg(dfg)
 
 # Convert the stream to a list of events for manual control
 event_list = []

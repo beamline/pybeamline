@@ -32,7 +32,7 @@ class OCDFGVisualizer:
         all_targets_by_type = {}
         all_activities_by_type = {}
 
-        for a1, obj_type, a2 in dfm:
+        for a1, obj_type, a2 in dfm.get_edges():
             color = self._get_color(obj_type)
             dot.edge(a1, a2, label=obj_type, color=color)
             all_sources_by_type.setdefault(obj_type, set()).add(a1)
@@ -67,7 +67,8 @@ class OCDFGVisualizer:
         :return: Rendered Graphviz Digraph object
         """
         dot = self.draw(dfm)
-        dot.view(cleanup=True)
+        dot.view(cleanup=True, filename="DFM-" + str(self.counter))
+        self.counter += 1
 
     def save(self, dfm: DFM, filename, format="png"):
         """
