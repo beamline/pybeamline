@@ -67,7 +67,7 @@ class OCDFGVisualizer:
         :return: Rendered Graphviz Digraph object
         """
         dot = self.draw(dfm)
-        dot.view(cleanup=True, filename="DFM-" + str(self.counter))
+        dot.view(cleanup=True, filename=os.path.join(self.snapshot_dir, "DFM-" + str(self.counter)))
         self.counter += 1
 
     def save(self, dfm: DFM, filename, format="png"):

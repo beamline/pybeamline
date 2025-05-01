@@ -39,7 +39,8 @@ class OCHeuristicsMinerLossyCounting:
 
     def ingest_event(self, event: BOEvent):
         current_bucket = int(math.ceil(self.__observed_events / self.__bucket_width))  # calculated bucket
-
+        print(event)
+        print(event.get_object_ids())
         # Difference between the original and the modified code: Object ID is now the trace identifier
         if event.get_object_ids()[0] in self.__D_C:  # if caseID already exist
             last_event = self.__D_C[event.get_object_ids()[0]]  # locally save former event

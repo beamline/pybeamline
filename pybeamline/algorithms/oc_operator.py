@@ -61,13 +61,14 @@ class OCOperator:
 
         self.subjects[obj_type] = subject
         subject.pipe(
+            ops.do_action(lambda x: print(f"OCOperator: {x}")),
             miner,
             ops.map(lambda model, t=obj_type: {"object_type": t, "model": model})
         ).subscribe(self.output_subject)
 
     def _route_to_miner(self, flat_event: BOEvent):
-        object_type = flat_event.ocel_omap[0]["ocel:type"]
-
+        object_type = flat_event.get_omap_types()[0]  # Assuming single object type per event
+        print(flat_event)
         if object_type not in self.subjects:
             if self.dynamic_mode:
                 self._register_stream(object_type)  # Auto-register
