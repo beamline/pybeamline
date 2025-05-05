@@ -3,8 +3,7 @@ from pybeamline.algorithms.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.objects.ocdfgvisualizer import OCDFGVisualizer
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.sources.ocel_log_source import ocel_log_source_from_file
-from reactivex import operators as ops
+
 
 test_events_phaseflow = [
     {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
@@ -48,9 +47,7 @@ combined_log.pipe(
     #ops.do_action(lambda x: print(f"Event: {x}")),
     #ops.take(1000),
     oc_operator(control_flow),
-    ops.do_action(lambda x: print(f"OCOperator: {x}")),
     ocdfg_merge_operator(),
-    ops.do_action(lambda x: print(x))
 ).subscribe(lambda x: oc_visualizer.render(x))
 
 

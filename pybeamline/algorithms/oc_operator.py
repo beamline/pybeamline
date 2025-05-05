@@ -61,7 +61,6 @@ class OCOperator:
 
         self.subjects[obj_type] = subject
         subject.pipe(
-            ops.do_action(lambda x: print(f"OCOperator: {x}")),
             miner,
             ops.map(lambda model, t=obj_type: {"object_type": t, "model": model})
         ).subscribe(self.output_subject)

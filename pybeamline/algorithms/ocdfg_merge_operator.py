@@ -23,7 +23,7 @@ class OCDFGMerger:
     Merges object-centric DFGs into a global ODFM structure.
     """
     def __init__(self):
-        self.oc_dfgs = defaultdict() # Dictionary of object type to DFG
+        self.dfgs = defaultdict() # Dictionary of object type to DFG
         self.dfm = DFM() # Directly-Follows Multigraph
 
     def merge(self,object_type: str, dfg) -> DFM:
@@ -31,13 +31,14 @@ class OCDFGMerger:
         Merge a new model (object-type specific) into the global DFM structure.
         """
         # Overwrite old model
-        self.oc_dfgs[object_type] = dfg
+        self.dfgs[object_type] = dfg
 
         # Reconstruct ODFG
         self.dfm = DFM()
-        for ot, dfg_model in self.oc_dfgs.items():
+        for ot, dfg_model in self.dfgs.items():
+            print(dfg_model)
             for (a1, a2) in dfg_model.dfg.keys():
-                self.dfm.add_edge(a1, ot, a2)
+                self.dfm.add_edge(a1, ot, a2, dfg_model.dfg[(a1, a2)])  # Add edge to DFM
         # Print ODFM
         # print("\n[ODFM — Definition 8] - Object-Centric Process Mining: Dealing with Divergence and Convergence...")
         # for triple in self.odfm:
@@ -54,9 +55,9 @@ class OCDFGMerger:
         """
         # If its first time seeing this object type and its not empty — update
         new_keys = set(new_model.dfg.keys())
-        if obj_type not in self.oc_dfgs:
+        if obj_type not in self.dfgs:
             return bool(new_keys)
 
         # If keys are changed — update
-        old_keys = set(self.oc_dfgs[obj_type].dfg.keys())
+        old_keys = set(self.dfgs[obj_type].dfg.keys())
         return new_keys != old_keys

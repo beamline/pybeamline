@@ -1,5 +1,5 @@
 # Model class for Directly-Follows Multigraph (DFM)
-from typing import Tuple
+from typing import Tuple, Dict
 
 
 class DFM:
@@ -11,16 +11,17 @@ class DFM:
     """
     def __init__(self):
         self.nodes: set[str] = set()
-        self.edges: set[Tuple[str, str, str]] = set() # (source_activity, object_type, target_activity)
+        self.edges: Dict[Tuple[str, str, str], int] = {} # (source, object_type, target) -> frequency
 
-    def add_edge(self, source_activity: str, object_type: str, target_activity: str):
+    def add_edge(self, source_activity: str, object_type: str, target_activity: str, frequency: int):
         """
         Add an edge to the DFM.
+        Overwrites the frequency of the edge
         """
-        self.edges.add((source_activity, object_type, target_activity))
+        self.edges[(source_activity, object_type, target_activity)] = frequency
         self.nodes.update([source_activity, target_activity])
 
-    def get_edges(self) -> set[Tuple[str, str, str]]:
+    def get_edges(self) -> Dict[Tuple[str, str, str], int]:
         """
         Get all edges in the DFM.
         """
