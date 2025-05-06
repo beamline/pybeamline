@@ -13,7 +13,7 @@ def ocdfg_merge_operator() -> Callable[[Observable], Observable]:
     # Initialize the OCDFGMerger
     merger = OCDFGMerger()
     return lambda stream: stream.pipe(
-        ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
+        #ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
         ops.map(lambda model_dict: merger.merge(model_dict["object_type"], model_dict["model"]))
     )
 
@@ -36,7 +36,6 @@ class OCDFGMerger:
         # Reconstruct ODFG
         self.dfm = DFM()
         for ot, dfg_model in self.dfgs.items():
-            print(dfg_model)
             for (a1, a2) in dfg_model.dfg.keys():
                 self.dfm.add_edge(a1, ot, a2, dfg_model.dfg[(a1, a2)])  # Add edge to DFM
         # Print ODFM

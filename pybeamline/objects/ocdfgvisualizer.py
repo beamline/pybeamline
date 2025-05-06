@@ -34,7 +34,8 @@ class OCDFGVisualizer:
 
         for a1, obj_type, a2 in dfm.get_edges():
             color = self._get_color(obj_type)
-            dot.edge(a1, a2, label=obj_type, color=color)
+            freq = dfm.edges[(a1, obj_type, a2)]
+            dot.edge(a1, a2, label= str(freq), color=color)
             all_sources_by_type.setdefault(obj_type, set()).add(a1)
             all_targets_by_type.setdefault(obj_type, set()).add(a2)
             all_activities_by_type.setdefault(obj_type, set()).update([a1, a2])

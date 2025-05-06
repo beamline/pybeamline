@@ -4,25 +4,50 @@ from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import Observable
 from reactivex import just, empty
 from reactivex import operators as ops
+
+from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
+from pybeamline.boevent import BOEvent
 
 
 def heuristics_miner_lossy_counting_budget(
         model_update_frequency=10,
         budget=100,
         dependency_threshold=0.5,
-        and_threshold=0.8) -> Callable[[Observable[BEvent]], Observable[HeuristicsNet]]:
+        and_threshold=0.8) -> Callable[[Observable], Observable[HeuristicsNet]]:
     hm = HeuristicsMinerLossyCountingBudget(budget=budget, dependency_threshold=dependency_threshold,
                                             and_threshold=and_threshold)
 
-    def miner(event: BEvent) -> Observable[HeuristicsNet]:
-        hm.ingest_event(event)
+
+    def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
+        if isinstance(event, BOEvent):
+            # Verify that the event is flattened
+            if len(event.get_object_ids()) != 1:
+                raise ValueError("BOEvent should be flattened before supplied to miner")
+
+            # Wrapping BOEvent into BEvent
+            trace_name = event.get_object_ids()[0]
+            b_event = BEvent(
+                activity_name=event.get_event_name(),
+                case_id=trace_name,
+                event_time=event.get_event_time()
+            )
+            hm.ingest_event(b_event)
+
+        elif isinstance(event, BEvent):
+            hm.ingest_event(event)
+
+        else:
+            raise TypeError(f"Unsupported event type: {type(event)}")
+
         if hm.observed_events() % model_update_frequency == 0:
             return just(hm.get_model())
         else:
             return empty()
 
     return ops.flat_map(miner)
+
+
 
 
 # Class originally developed by Magnus Frederiksen as part of his BSc project at DTU entitled

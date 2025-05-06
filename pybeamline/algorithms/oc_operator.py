@@ -1,4 +1,4 @@
-from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import oc_heuristics_miner_lossy_counting
+from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from reactivex import operators as ops
 from reactivex.subject import Subject
@@ -57,7 +57,7 @@ class OCOperator:
         subject = Subject()
 
         # Use provided miner_func or default to a new lossy counting instance
-        miner = miner_func or oc_heuristics_miner_lossy_counting(model_update_frequency=50)
+        miner = miner_func or heuristics_miner_lossy_counting(10)
 
         self.subjects[obj_type] = subject
         subject.pipe(
@@ -67,7 +67,6 @@ class OCOperator:
 
     def _route_to_miner(self, flat_event: BOEvent):
         object_type = flat_event.get_omap_types()[0]  # Assuming single object type per event
-        print(flat_event)
         if object_type not in self.subjects:
             if self.dynamic_mode:
                 self._register_stream(object_type)  # Auto-register
