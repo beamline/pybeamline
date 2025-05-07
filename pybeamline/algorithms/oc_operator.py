@@ -1,8 +1,13 @@
+import copy
+
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from reactivex import operators as ops
 from reactivex.subject import Subject
 from typing import Callable, Dict
+
+from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
+
 
 def oc_operator(control_flow: Dict[str, Callable] = None) -> Callable:
     """
@@ -36,12 +41,14 @@ def oc_operator(control_flow: Dict[str, Callable] = None) -> Callable:
 
 DEFAULT = object()
 
+
 class OCOperator:
     def __init__(self, control_flow: Dict[str, Callable] = DEFAULT):
         self.control_flow = {} if control_flow is DEFAULT else control_flow
         self.dynamic_mode = (control_flow is DEFAULT)
         self.output_subject = Subject()
         self.subjects = {}
+        self.relation_tracker = ObjectRelationTracker()
 
         # If static config was supplied
         if not self.dynamic_mode:
@@ -57,12 +64,15 @@ class OCOperator:
         subject = Subject()
 
         # Use provided miner_func or default to a new lossy counting instance
-        miner = miner_func or heuristics_miner_lossy_counting(10)
+        miner = miner_func or heuristics_miner_lossy_counting(50)
 
         self.subjects[obj_type] = subject
         subject.pipe(
             miner,
-            ops.map(lambda model, t=obj_type: {"object_type": t, "model": model})
+            ops.map(lambda model, t=obj_type:
+                    {"object_type": t,
+                     "model": model,
+                     "relation": copy.deepcopy(self.relation_tracker)})
         ).subscribe(self.output_subject)
 
     def _route_to_miner(self, flat_event: BOEvent):
@@ -75,10 +85,14 @@ class OCOperator:
 
         self.subjects[object_type].on_next(flat_event)
 
+    def _update_relation_tracker(self, event: BOEvent):
+        self.relation_tracker.ingest_event(event)
 
     def op(self) -> Callable:
         def _route_and_process(event_stream):
             return event_stream.pipe(
+                # update relation tracker
+                ops.do_action(lambda event: self._update_relation_tracker(event)),
                 ops.flat_map(lambda event: event.flatten()),
                 ops.do_action(self._route_to_miner),
                 ops.ignore_elements(),
@@ -87,3 +101,4 @@ class OCOperator:
             )
 
         return _route_and_process
+

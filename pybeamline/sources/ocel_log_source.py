@@ -31,9 +31,13 @@ def ocel_log_source(
     ) -> abc.DisposableBase:
 
         for _, event in log.get_extended_table().iterrows():
-            omap: Dict[str, Set[str]] = {
-                obj_type: set(ids)
-                for obj_type, ids in event["objects"].items()
+
+            # Build the omap using columns that start with "ocel:type:" and are not NaN
+            omap = {
+                col.split("ocel:type:")[1]: event[col]
+                for col in event.keys()
+                if col.startswith("ocel:type:") and event[col] is not None
+                and not (isinstance(event[col], float) and math.isnan(event[col]))
             }
 
             vmap: Dict[str,Any] = {

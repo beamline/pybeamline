@@ -69,6 +69,9 @@ class BOEvent(AbstractEvent):
     def get_omap(self):
         return self.omap
 
+    def get_vmap(self):
+        return self.vmap
+
     def __str__(self):
         return str(self.to_dict())
 

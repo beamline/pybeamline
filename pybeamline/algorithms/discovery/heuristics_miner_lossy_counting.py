@@ -65,8 +65,7 @@ class HeuristicsMinerLossyCounting:
 
     def ingest_event(self, event):
         current_bucket = int(math.ceil(self.__observed_events / self.__bucket_width))  # calculated bucket
-        print("Here")
-        print(event.get_event_name())
+
         if event.get_trace_name() in self.__D_C:  # if caseID already exist
             last_event = self.__D_C[event.get_trace_name()]  # localy save former event
 

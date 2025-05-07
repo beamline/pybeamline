@@ -1,10 +1,11 @@
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
-from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import oc_heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.objects.ocdfgvisualizer import OCDFGVisualizer
+from pybeamline.objects.umlvisualizer import UMLVisualizer
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-
+from pybeamline.sources.ocel_log_source import ocel_log_source_from_file
+from pybeamline.utils.visualizer import Visualizer
 
 test_events_phaseflow = [
     {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
@@ -25,8 +26,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
-#combined_log = ocel_log_source_from_file('tests/socel2_hinge.xml')
+#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -40,19 +41,26 @@ control_flow = {
 }
 
 
-oc_visualizer = OCDFGVisualizer()
+visualizer = Visualizer()
+
+def save_snapshots(dfm, relation_tracker):
+    """
+    Save DFM and UML snapshots using the visualizers.
+    """
+    visualizer.save(dfm, relation_tracker)
+
+from reactivex import operators as ops
 
 # pipe the combined log to the OCOperator op
 emitted = []
 combined_log.pipe(
     #ops.do_action(lambda x: print(f"Event: {x}")),
     #ops.take(1000),
-    oc_operator(control_flow),
+    oc_operator(),
     ocdfg_merge_operator(),
-).subscribe(lambda x: oc_visualizer.save(x, "TestFreq.png"))
+).subscribe(lambda result: save_snapshots(result[0], result[1]))
 
 
-
-#lambda x: oc_visualizer.render(x))
+visualizer.generate_side_by_side_gif()
 
 
