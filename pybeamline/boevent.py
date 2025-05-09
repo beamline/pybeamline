@@ -1,4 +1,8 @@
 from datetime import datetime
+from typing import List, Optional, Dict, Set
+
+from lxml.html.defs import event_attrs
+
 from pybeamline.abstractevent import AbstractEvent
 
 DEFAULT_EVENT_ID = "ocel:eid"
@@ -7,48 +11,78 @@ DEFAULT_EVENT_TIMESTAMP = "ocel:timestamp"
 OCEL_OMAP_KEY = "ocel:omap"
 DEFAULT_OBJECT_ID = "ocel:oid"
 DEFAULT_OBJECT_TYPE = "ocel:type"
+OCEL_VMAP_KEY = "ocel:vmap"
+
 
 class BOEvent(AbstractEvent):
 
-    def __init__(self, event_id, activity_name, timestamp=None, object_refs=None):
-        self.event_attributes = {
-            DEFAULT_EVENT_ID: event_id,
-            DEFAULT_EVENT_ACTIVITY: activity_name,
-            DEFAULT_EVENT_TIMESTAMP: datetime.now() if not timestamp else timestamp
-        }
-        self.ocel_omap = object_refs or []  # List of dicts: [{"id": "O-123", "type": "Order"}]
+    def __init__(self, event_id: str, activity_name: str, omap: Dict[str, Set[str]], timestamp: Optional[datetime] = None, vmap: Optional[Dict[str, str]] = None):
+        """
+        Represents a single event aligned with OCEL 2.0 specification.
+        :param event_id: Unique event identifier (ocel:eid)
+        :param activity_name: Name of the activity (ocel:activity)
+        :param timestamp: Timestamp of the event (ocel:timestamp)
+        :param omap: List of associated objects (ocel:omap)
+        :param vmap: Additional event attributes (ocel:vmap)
+        """
+        self.event_id = event_id
+        self.activity_name = activity_name
+        self.timestamp = timestamp or datetime.now()
+        self.omap = omap
+        self.vmap = vmap or {}
+
+    def flatten(self) -> List["BOEvent"]:
+        """
+        Flattens the event into multiple BOEvents,
+        each associated with a single (object type, object id) pair from the omap.
+        """
+        flattened_events = []
+        for obj_type, obj_ids in self.omap.items():
+            for obj_id in obj_ids:
+                new_omap = {obj_type: {obj_id}}  # Single-entry omap
+                flattened_events.append(
+                    BOEvent(
+                        event_id=self.event_id,
+                        activity_name=self.activity_name,
+                        timestamp=self.timestamp,
+                        omap=new_omap,
+                        vmap=self.vmap
+                    )
+                )
+        return flattened_events
 
     def get_event_id(self):
-        return self.event_attributes[DEFAULT_EVENT_ID]
+        return self.event_id
 
     def get_event_name(self):
-        return self.event_attributes[DEFAULT_EVENT_ACTIVITY]
+        return self.activity_name
 
     def get_event_time(self):
-        return self.event_attributes[DEFAULT_EVENT_TIMESTAMP]
+        return self.timestamp
 
-    def get_object_ids(self):
-        return [obj['ocel:oid'] for obj in self.ocel_omap]
+    def get_object_ids(self) -> List[str]:
+        return [oid for ids in self.omap.values() for oid in ids]
 
-    def get_object_types(self):
-        return [obj['ocel:type'] for obj in self.ocel_omap]
+    def get_omap_types(self):
+        return list(self.omap.keys())
 
-    def get_object_refs(self):
-        return self.ocel_omap
+    def get_omap(self):
+        return self.omap
+
+    def get_vmap(self):
+        return self.vmap
 
     def __str__(self):
-        return f"({self.get_event_id()}, {self.get_event_name()}, {self.get_event_time()}, {self.ocel_omap})"
+        return str(self.to_dict())
 
     def __repr__(self):
         return self.__str__()
 
     def to_dict(self):
-        """
-        Convert the event to a dictionary representation.
-        """
         return {
-            DEFAULT_EVENT_ID: self.get_event_id(),
-            DEFAULT_EVENT_ACTIVITY: self.get_event_name(),
-            DEFAULT_EVENT_TIMESTAMP: self.get_event_time(),
-            OCEL_OMAP_KEY: self.ocel_omap
+            DEFAULT_EVENT_ID: self.event_id,
+            DEFAULT_EVENT_ACTIVITY: self.activity_name,
+            DEFAULT_EVENT_TIMESTAMP: self.timestamp,
+            OCEL_OMAP_KEY: self.omap,
+            OCEL_VMAP_KEY: self.vmap
         }

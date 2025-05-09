@@ -1,29 +1,51 @@
 import math
 from pm4py.algo.discovery.heuristics.variants.classic import calculate as compute_dfg
-
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import just, empty
+from reactivex import just, empty, throw
 from reactivex import operators as ops
 from reactivex import Observable
+from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
 from typing import Callable
+from pybeamline.boevent import BOEvent
 
 
 def heuristics_miner_lossy_counting(
         model_update_frequency=10,
         max_approx_error=0.001,
         dependency_threshold=0.5,
-        and_threshold=0.8) -> Callable[[Observable[BEvent]], Observable[HeuristicsNet]]:
-    hm = HeuristicsMinerLossyCounting(max_approx_error=max_approx_error, dependency_threshold=dependency_threshold, and_threshold=and_threshold)
+        and_threshold=0.8) -> Callable[[Observable], Observable[HeuristicsNet]]:
+    hm = HeuristicsMinerLossyCounting(
+        max_approx_error=max_approx_error,
+        dependency_threshold=dependency_threshold,
+        and_threshold=and_threshold)
 
-    def miner(event: BEvent) -> Observable[HeuristicsNet]:
-        hm.ingest_event(event)
+    def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
+        if isinstance(event, BOEvent):
+            # Verify that the event is flattened
+            if len(event.get_object_ids()) != 1:
+                raise ValueError("BOEvent should be flattened before supplied to miner")
+
+            # Wrapping BOEvent into BEvent
+            trace_name = event.get_object_ids()[0]
+            b_event = BEvent(
+                activity_name=event.get_event_name(),
+                case_id=trace_name,
+                event_time=event.get_event_time()
+            )
+            hm.ingest_event(b_event)
+
+        elif isinstance(event, BEvent):
+            hm.ingest_event(event)
+        else:
+            raise TypeError(f"Unsupported event type: {type(event)}")
+
         if hm.observed_events() % model_update_frequency == 0:
             return just(hm.get_model())
-        else:
-            return empty()
+        return empty()
 
     return ops.flat_map(miner)
+
 
 # Class originally developed by Magnus Frederiksen as part of his BSc project at DTU entitled
 # "Development of Process Mining and Complex Event Processing using Python"
@@ -40,6 +62,7 @@ class HeuristicsMinerLossyCounting:
 
     def ingest_event(self, event):
         current_bucket = int(math.ceil(self.__observed_events / self.__bucket_width))  # calculated bucket
+
         if event.get_trace_name() in self.__D_C:  # if caseID already exist
             last_event = self.__D_C[event.get_trace_name()]  # localy save former event
 
