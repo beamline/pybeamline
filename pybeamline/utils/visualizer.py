@@ -4,7 +4,7 @@ from PIL import Image
 from attr import attributes
 from graphviz import Digraph
 import random
-from pybeamline.objects.dfm import DFM
+from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 class Visualizer:
@@ -24,7 +24,7 @@ class Visualizer:
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
-    def draw_dfg(self, dfm: DFM) -> Digraph:
+    def draw_dfg(self, dfm: OCDFG) -> Digraph:
         """
         :param dfm: Directly-Follows Multigraph (DFM) object
         :return: Graphviz Digraph object
@@ -100,7 +100,7 @@ class Visualizer:
 
         return dot
 
-    def save(self, dfm: DFM, uml: ObjectRelationTracker):
+    def save(self, dfm: OCDFG, uml: ObjectRelationTracker):
         dfm_dot = self.draw_dfg(dfm)
         uml_dot = self.draw_uml(uml)
 

@@ -1,5 +1,4 @@
 import unittest
-
 from pybeamline.boevent import BOEvent
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from reactivex import operators as ops

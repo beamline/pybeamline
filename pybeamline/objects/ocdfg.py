@@ -1,11 +1,10 @@
-# Model class for Directly-Follows Multigraph (DFM)
+# Model class for OCDFG (Object-Centric Directly-Follows Graph)
 from typing import Tuple, Dict
 
 
-class DFM:
+class OCDFG:
     """
-    Directly-Follows Multigraph (DFM) across multiple object types.
-
+     Object-Centric Directly-Follows Graph (OCDFG) across multiple object types.
     - Nodes are activity labels (strings).
     - Edges are triples: (source activity, object type, target activity).
     """
@@ -26,6 +25,12 @@ class DFM:
         Get all edges in the DFM.
         """
         return self.edges
+
+    def get_nodes(self) -> set[str]:
+        """
+        Get all nodes in the DFM.
+        """
+        return self.nodes
 
     def __str__(self):
         """

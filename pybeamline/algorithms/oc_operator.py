@@ -1,21 +1,23 @@
 import copy
 
+from openpyxl.pivot.fields import Boolean
+
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from reactivex import operators as ops
 from reactivex.subject import Subject
 from typing import Callable, Dict
-
 from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 
-def oc_operator(control_flow: Dict[str, Callable] = None) -> Callable:
+def oc_operator(control_flow: Dict[str, Callable] = None, uml_version: bool = False) -> Callable:
     """
     Creates an object-centric operator for processing streams of BOEvents.
     Reactive operator that routes incoming events to the appropriate miner
     based on the object type. If a miner is not registered for an object type,
     it will be auto-registered.
 
+    :param uml_version:
     :param control_flow: (Optional[Dict[str, Callable]]):
     A mapping from object type names to their mining operators.
     If None, dynamic discovery will be enabled and default miners used.
@@ -31,24 +33,20 @@ def oc_operator(control_flow: Dict[str, Callable] = None) -> Callable:
             raise ValueError(
                 f"control_flow values must be callables (stream operators), got {type(value).__name__} for object type '{key}'")
 
-    if control_flow is None:
-        oc_op = OCOperator()
-    else:
-        oc_op = OCOperator(control_flow=control_flow)
-
-    return oc_op.op()
+    return OCOperator(control_flow=control_flow, uml_version=uml_version).op()
 
 
 DEFAULT = object()
 
 
 class OCOperator:
-    def __init__(self, control_flow: Dict[str, Callable] = DEFAULT):
-        self.control_flow = {} if control_flow is DEFAULT else control_flow
-        self.dynamic_mode = (control_flow is DEFAULT)
+    def __init__(self, control_flow: Dict[str, Callable] = None, uml_version: bool = False):
+        self.control_flow = {} if control_flow is None else control_flow
+        self.dynamic_mode = (control_flow is None)
         self.output_subject = Subject()
         self.subjects = {}
-        self.relation_tracker = ObjectRelationTracker()
+        self.uml_version = uml_version
+        self.relation_tracker = ObjectRelationTracker() if uml_version else None
 
         # If static config was supplied
         if not self.dynamic_mode:
@@ -67,13 +65,10 @@ class OCOperator:
         miner = miner_func or heuristics_miner_lossy_counting(50)
 
         self.subjects[obj_type] = subject
-        subject.pipe(
-            miner,
-            ops.map(lambda model, t=obj_type:
-                    {"object_type": t,
-                     "model": model,
-                     "relation": copy.deepcopy(self.relation_tracker)})
-        ).subscribe(self.output_subject)
+        if self.uml_version:
+            subject.pipe(self._uml_stream(obj_type, miner)).subscribe(self.output_subject)
+        else:
+            subject.pipe(self._basic_stream(obj_type, miner)).subscribe(self.output_subject)
 
     def _route_to_miner(self, flat_event: BOEvent):
         object_type = flat_event.get_omap_types()[0]  # Assuming single object type per event
@@ -86,19 +81,63 @@ class OCOperator:
         self.subjects[object_type].on_next(flat_event)
 
     def _update_relation_tracker(self, event: BOEvent):
-        self.relation_tracker.ingest_event(event)
+        if self.uml_version:
+            self.relation_tracker.ingest_event(event)
 
     def op(self) -> Callable:
+        """
+        Determines which pipeline to use based on the uml_version flag.
+        """
         def _route_and_process(event_stream):
-            return event_stream.pipe(
-                # update relation tracker
-                ops.do_action(lambda event: self._update_relation_tracker(event)),
-                ops.flat_map(lambda event: event.flatten()),
-                ops.do_action(self._route_to_miner),
-                ops.ignore_elements(),
-            ).pipe(
-                ops.merge(self.output_subject)
-            )
-
+            if self.uml_version:
+                return self._pipeline_with_uml(event_stream)
+            else:
+                return self._pipeline_basic(event_stream)
         return _route_and_process
 
+    def _basic_stream(self, obj_type: str, miner: Callable):
+        """
+        Defines the basic stream without relation tracker.
+        """
+        return lambda stream: stream.pipe(
+            miner,
+            ops.map(lambda model, t=obj_type:
+                    {"object_type": t, "model": model})
+        )
+
+    def _uml_stream(self, obj_type: str, miner: Callable):
+        """
+        Defines the stream with UML tracking (relation tracker).
+        """
+        return lambda stream: stream.pipe(
+            miner,
+            ops.map(lambda model, t=obj_type:
+                    {"object_type": t,
+                     "model": model,
+                     "relation": copy.deepcopy(self.relation_tracker)})
+        )
+
+    def _pipeline_with_uml(self, event_stream):
+        """
+        Event stream pipeline with UML tracking.
+        """
+        return event_stream.pipe(
+            ops.do_action(lambda event: self._update_relation_tracker(event)),
+            ops.flat_map(lambda event: event.flatten()),
+            ops.do_action(self._route_to_miner),
+            ops.ignore_elements()
+        ).pipe(
+            ops.merge(self.output_subject)
+        )
+
+    def _pipeline_basic(self, event_stream):
+        """
+        Event stream pipeline without UML tracking.
+        """
+        return event_stream.pipe(
+            ops.flat_map(lambda event: event.flatten()),
+            ops.do_action(self._route_to_miner),
+            ops.ignore_elements()
+        ).pipe(
+            ops.merge(self.output_subject)
+        )

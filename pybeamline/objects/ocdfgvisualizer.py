@@ -4,7 +4,7 @@ from PIL import Image
 
 from graphviz import Digraph
 import random
-from pybeamline.objects.dfm import DFM
+from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 
@@ -24,7 +24,7 @@ class OCDFGVisualizer:
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
-    def draw(self, dfm: DFM) -> Digraph:
+    def draw(self, dfm: OCDFG) -> Digraph:
         """
         :param dfm: Directly-Follows Multigraph (DFM) object
         :return: Graphviz Digraph object
@@ -63,7 +63,7 @@ class OCDFGVisualizer:
 
         return dot
 
-    def render(self, dfm: DFM):
+    def render(self, dfm: OCDFG):
         """
         Renders the ODFM using Graphviz.
         :param dfm:
@@ -73,7 +73,7 @@ class OCDFGVisualizer:
         dot.view(cleanup=True, filename=os.path.join(self.snapshot_dir, "DFM-" + str(self.counter)))
         self.counter += 1
 
-    def save(self, dfm: DFM, filename, format="png"):
+    def save(self, dfm: OCDFG, filename, format="png"):
         """
         Saves the ODFM to a file using Graphviz.
         :param dfm:

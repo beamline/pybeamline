@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import Callable
+from typing import Callable, Optional
 from reactivex import operators as ops, Observable
-from pybeamline.objects.dfm import DFM
+from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 
@@ -15,15 +15,11 @@ def ocdfg_merge_operator() -> Callable[[Observable], Observable]:
     merger = OCDFGMerger()
     return lambda stream: stream.pipe(
         ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
-        ops.map(lambda model_dict: (
-            merger.merge(
-                model_dict["object_type"],
-                model_dict["model"],
-                model_dict["relation"]
-                ),
-            model_dict["relation"]
-            )
-        )
+        ops.map(lambda model_dict: merger.merge(
+            model_dict["object_type"],
+            model_dict["model"],
+            model_dict.get("relation", None)  # relation_tracker is optional
+        ))
     )
 
 
@@ -33,9 +29,9 @@ class OCDFGMerger:
     """
     def __init__(self):
         self.dfgs = defaultdict() # Dictionary of object type to DFG
-        self.dfm = DFM() # Directly-Follows Multigraph
+        self.dfm = OCDFG() # Directly-Follows Multigraph
 
-    def merge(self,object_type: str, dfg, relation_tracker: ObjectRelationTracker) -> DFM:
+    def merge(self,object_type: str, dfg, relation_tracker: Optional[ObjectRelationTracker] = None) -> tuple[OCDFG, ObjectRelationTracker] | OCDFG:
         """
         Merge a new model (object-type specific) into the global DFM structure.
         """
@@ -43,9 +39,16 @@ class OCDFGMerger:
         self.dfgs[object_type] = dfg
 
         # Reconstruct ODFG
-        self.dfm = DFM()
+        self.dfm = OCDFG()
         for obj_type1, dfg_model in self.dfgs.items():
             for (a1, a2) in dfg_model.dfg.keys():
+                freq = dfg_model.dfg[(a1, a2)]
+                # Traditional Union Merge based on similar activity names
+                if relation_tracker is None:
+                    self.dfm.add_edge(a1, obj_type1, a2, freq)
+                    continue
+
+                # Relation-Aware merge: Only if the activities are shared
                 # Check if two activities share an event
                 for obj_type2 in self.dfgs.keys():
                     if obj_type2 == obj_type1:
@@ -53,7 +56,7 @@ class OCDFGMerger:
 
                     if relation_tracker.shared_event(obj_type1, obj_type2, a1) or relation_tracker.shared_event(obj_type1, obj_type2, a2):
                         # Add edge to DFM
-                        self.dfm.add_edge(a1, obj_type1, a2, dfg_model.dfg[(a1, a2)])
+                        self.dfm.add_edge(a1, obj_type1, a2, freq)
 
         # Print ODFM
         # print("\n[ODFM — Definition 8] - Object-Centric Process Mining: Dealing with Divergence and Convergence...")
@@ -61,7 +64,10 @@ class OCDFGMerger:
         #    print(f"{triple[0]} --({triple[1]})--> {triple[2]}")
 
         # Return merged model
-        return self.dfm
+        if relation_tracker:
+            return self.dfm, relation_tracker
+        else:
+            return self.dfm
 
 
     def should_update(self, obj_type, new_model):

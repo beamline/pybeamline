@@ -26,8 +26,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
-combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
+#combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -56,9 +56,9 @@ emitted = []
 combined_log.pipe(
     #ops.do_action(lambda x: print(f"Event: {x}")),
     #ops.take(1000),
-    oc_operator(),
+    oc_operator(control_flow),
     ocdfg_merge_operator(),
-).subscribe(lambda result: save_snapshots(result[0], result[1]))
+).subscribe(lambda result: print(result))
 
 
 visualizer.generate_side_by_side_gif()

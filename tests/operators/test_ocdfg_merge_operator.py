@@ -1,11 +1,11 @@
 import unittest
-from typing import Any
 
-from pybeamline.algorithms.discovery.oc_heuristics_miner_lossy_counting import oc_heuristics_miner_lossy_counting
+from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
+from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc_operator import OCOperator
 from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.utils.ocdfg_merger import OCDFGMerger
+from pybeamline.algorithms.ocdfg_merge_operator import OCDFGMerger
 
 
 
@@ -35,16 +35,23 @@ class TestOCDFGMergeOperator(unittest.TestCase):
             shuffle=False
         )
         control_flow = {
-            "Order": oc_heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-            "Item": oc_heuristics_miner_lossy_counting(model_update_frequency=10),
-            "Customer": oc_heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-            "Shipment": oc_heuristics_miner_lossy_counting(model_update_frequency=1),
-            "Invoice": oc_heuristics_miner_lossy_counting(model_update_frequency=1),
+            "Order": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+            "Item": heuristics_miner_lossy_counting(model_update_frequency=10),
+            "Customer": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+            "Shipment": heuristics_miner_lossy_counting(model_update_frequency=1),
+            "Invoice": heuristics_miner_lossy_counting(model_update_frequency=1),
         }
         self.oc_operator = OCOperator(control_flow)
+        self.oc_operator_with_budget = OCOperator(control_flow={
+            "Order": heuristics_miner_lossy_counting_budget(model_update_frequency=10),
+            "Item": heuristics_miner_lossy_counting_budget(model_update_frequency=10),
+            "Customer": heuristics_miner_lossy_counting_budget(model_update_frequency=10),
+            "Shipment": heuristics_miner_lossy_counting_budget(model_update_frequency=1),
+            "Invoice": heuristics_miner_lossy_counting_budget(model_update_frequency=1),
+        })
         self.oc_merger = OCDFGMerger()
 
-    def test_ocdfg_merger(self):
+    def test_ocdfg_merger_with_heuristic(self):
         # Test the OCDFG merger with the combined log
         emitted_models = []
         self.combined_log.pipe(
@@ -54,8 +61,32 @@ class TestOCDFGMergeOperator(unittest.TestCase):
 
         for merged_ocdfg in emitted_models:
             # No empty models should be emitted
-            self.assertTrue(len(merged_ocdfg) > 0)
-            # Check that the merged model contains the expected object types
-            for tuple in merged_ocdfg:
-                self.assertIn(tuple[1], ["Order", "Item", "Customer", "Shipment", "Invoice"])
+            self.assertTrue(len(merged_ocdfg.get_edges().keys()) > 0)
+            self.assertTrue(len(merged_ocdfg.get_nodes()) > 0)
+
+            # Check if the merged model contains the expected activities
+            for activity in merged_ocdfg.get_nodes():
+                self.assertIn(activity, {"Register Customer", "Create Order",
+                                         "Add Item", "Reserve Item", "Cancel Order",
+                                         "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})
+
+    def test_ocdfg_merger_with_heuristic_budget(self):
+        # Test the OCDFG merger with the combined log
+        emitted_models = []
+        self.combined_log.pipe(
+            self.oc_operator_with_budget.op(),
+            ocdfg_merge_operator()
+        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg))
+
+        for merged_ocdfg in emitted_models:
+            # No empty models should be emitted
+            self.assertTrue(len(merged_ocdfg.get_edges().keys()) > 0)
+            self.assertTrue(len(merged_ocdfg.get_nodes()) > 0)
+
+            # Check if the merged model contains the expected activities
+            for activity in merged_ocdfg.get_nodes():
+                self.assertIn(activity, {"Register Customer", "Create Order",
+                                         "Add Item", "Reserve Item", "Cancel Order",
+                                         "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})
+
 
