@@ -1,15 +1,12 @@
 import math
 from pm4py.algo.discovery.heuristics.variants.classic import calculate as compute_dfg
-
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import just, empty, throw
 from reactivex import operators as ops
 from reactivex import Observable
-
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
 from typing import Callable
-
 from pybeamline.boevent import BOEvent
 
 

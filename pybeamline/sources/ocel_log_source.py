@@ -2,7 +2,7 @@ import math
 from typing import Optional, Dict, Set, Any
 from reactivex import Observable, abc
 from reactivex.disposable import CompositeDisposable
-from pm4py import read_ocel2_json, OCEL, ocel_sort_by_additional_column, read_ocel2
+from pm4py import OCEL, ocel_sort_by_additional_column, read_ocel2
 from pybeamline.boevent import BOEvent
 
 def ocel_log_source_from_file(log_path: str) -> Observable[BOEvent]:

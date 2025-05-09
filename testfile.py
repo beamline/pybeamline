@@ -1,10 +1,7 @@
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
-from pybeamline.objects.ocdfgvisualizer import OCDFGVisualizer
-from pybeamline.objects.umlvisualizer import UMLVisualizer
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.sources.ocel_log_source import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
 
 test_events_phaseflow = [

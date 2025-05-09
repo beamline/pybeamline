@@ -4,7 +4,6 @@ from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import Observable
 from reactivex import just, empty
 from reactivex import operators as ops
-
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
 from pybeamline.boevent import BOEvent

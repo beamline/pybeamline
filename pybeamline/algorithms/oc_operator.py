@@ -1,7 +1,4 @@
 import copy
-
-from openpyxl.pivot.fields import Boolean
-
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from reactivex import operators as ops
