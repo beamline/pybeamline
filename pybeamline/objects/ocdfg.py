@@ -14,7 +14,7 @@ class OCDFG:
 
     def add_edge(self, source_activity: str, object_type: str, target_activity: str, frequency: int):
         """
-        Add an edge to the DFM.
+        Add an edge to the OCDFG.
         Overwrites the frequency of the edge
         """
         self.edges[(source_activity, object_type, target_activity)] = frequency

@@ -102,17 +102,17 @@ class Visualizer:
 
     def save(self, dfm: OCDFG, uml: ObjectRelationTracker):
         dfm_dot = self.draw_dfg(dfm)
-        uml_dot = self.draw_uml(uml)
+        #uml_dot = self.draw_uml(uml)
 
         # Save both DFM and UML
         dfm_path = os.path.join(self.snapshot_dir, f"dfm_snapshot_{self.counter}")
-        uml_path = os.path.join(self.snapshot_dir, f"uml_snapshot_{self.counter}")
+        #uml_path = os.path.join(self.snapshot_dir, f"uml_snapshot_{self.counter}")
 
         dfm_dot.render(dfm_path, cleanup=True, format="png")
-        uml_dot.render(uml_path, cleanup=True, format="png")
+        #uml_dot.render(uml_path, cleanup=True, format="png")
 
         self.snapshots_dfm.append(dfm_path)
-        self.snapshots_uml.append(uml_path)
+        #self.snapshots_uml.append(uml_path)
         self.counter += 1
 
     def generate_side_by_side_gif(self, out_file="dfm_uml_evolution.gif", duration=1500, size=(2500, 1200)):

@@ -14,7 +14,7 @@ def ocdfg_merge_operator() -> Callable[[Observable], Observable]:
     # Initialize the OCDFGMerger
     merger = OCDFGMerger()
     return lambda stream: stream.pipe(
-        ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
+        #ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
         ops.map(lambda model_dict: merger.merge(
             model_dict["object_type"],
             model_dict["model"],
