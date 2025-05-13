@@ -2,10 +2,10 @@ import unittest
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
-from pybeamline.algorithms.oc_operator import OCOperator
-from pybeamline.algorithms.ocdfg_merge_operator import ocdfg_merge_operator
+from pybeamline.algorithms.oc.oc_operator import OCOperator
+from pybeamline.algorithms.oc.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.algorithms.ocdfg_merge_operator import OCDFGMerger
+from pybeamline.algorithms.oc.ocdfg_merge_operator import OCDFGMerger
 
 
 

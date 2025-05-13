@@ -24,41 +24,32 @@ class Visualizer:
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
-    def draw_dfg(self, dfm: OCDFG) -> Digraph:
+    def draw_ocdfg(self, dfm: OCDFG) -> Digraph:
         """
-        :param dfm: Directly-Follows Multigraph (DFM) object
-        :return: Graphviz Digraph object
+        Draws an OCDFG using Graphviz with clearly marked start and end nodes per object type.
+        :param dfm: OCDFG instance
+        :return: Digraph object
         """
         dot = Digraph(format="png")
-        all_sources_by_type = {}
-        all_targets_by_type = {}
-        all_activities_by_type = {}
 
-        for a1, obj_type, a2 in dfm.get_edges():
+        for obj_type, transitions in dfm.edges.items():
             color = self._get_color(obj_type)
-            freq = str(dfm.edges[(a1, obj_type, a2)])
-            dot.edge(a1, a2, label=freq, color=color)
-            all_sources_by_type.setdefault(obj_type, set()).add(a1)
-            all_targets_by_type.setdefault(obj_type, set()).add(a2)
-            all_activities_by_type.setdefault(obj_type, set()).update([a1, a2])
 
-        for obj_type in all_activities_by_type:
-            color = self._get_color(obj_type)
-            sources = all_sources_by_type.get(obj_type, set())
-            targets = all_targets_by_type.get(obj_type, set())
+            # Draw edges with frequency labels
+            for (a1, a2), freq in transitions.items():
+                dot.edge(a1, a2, label=str(freq), color=color)
 
-            initial_activities = sources - targets
-            final_activities = targets - sources
-
+            # Start and end activities (explicitly stored)
             start_node = f"__start__{obj_type}__"
             end_node = f"__end__{obj_type}__"
 
             dot.node(start_node, label=f"Start ({obj_type})", shape="ellipse", style="filled", fillcolor=color)
             dot.node(end_node, label=f"End ({obj_type})", shape="ellipse", style="filled", fillcolor=color)
 
-            for act in initial_activities:
+            for act in dfm.start_activities.get(obj_type, set()):
                 dot.edge(start_node, act, style="dashed", color=color)
-            for act in final_activities:
+
+            for act in dfm.end_activities.get(obj_type, set()):
                 dot.edge(act, end_node, style="dashed", color=color)
 
         return dot
@@ -100,12 +91,12 @@ class Visualizer:
 
         return dot
 
-    def save(self, dfm: OCDFG, uml: ObjectRelationTracker):
-        dfm_dot = self.draw_dfg(dfm)
+    def save(self, ocdfg: OCDFG, uml: ObjectRelationTracker):
+        dfm_dot = self.draw_ocdfg(ocdfg)
         #uml_dot = self.draw_uml(uml)
 
         # Save both DFM and UML
-        dfm_path = os.path.join(self.snapshot_dir, f"dfm_snapshot_{self.counter}")
+        dfm_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
         #uml_path = os.path.join(self.snapshot_dir, f"uml_snapshot_{self.counter}")
 
         dfm_dot.render(dfm_path, cleanup=True, format="png")
