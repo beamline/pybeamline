@@ -29,12 +29,12 @@ class TestOCOperator(unittest.TestCase):
        # Check if the operator is initialized correctly with control flow
         self.assertIsInstance(self.oc_operator_with_control_flow_heuristic, OCOperator)
         self.assertIsInstance(self.oc_operator_with_control_flow_heuristic_budget, OCOperator)
-        self.assertFalse(self.oc_operator_with_control_flow_heuristic.dynamic_mode)
-        self.assertFalse(self.oc_operator_with_control_flow_heuristic_budget.dynamic_mode)
+        self.assertFalse(self.oc_operator_with_control_flow_heuristic.__dynamic_mode)
+        self.assertFalse(self.oc_operator_with_control_flow_heuristic_budget.__dynamic_mode)
 
         # Check if the operator is initialized correctly without control flow
         self.assertIsInstance(self.operator_without_cf, OCOperator)
-        self.assertTrue(self.operator_without_cf.dynamic_mode)
+        self.assertTrue(self.operator_without_cf.__dynamic_mode)
 
     def test_oc_operator_with_cf_heuristic_yields_projected_dfg(self):
         # Sample Dict to generate OCEL source
@@ -59,7 +59,7 @@ class TestOCOperator(unittest.TestCase):
 
         for dictModel in emitted_models:
             # Check if the object type is equal to keys of the control flow
-            self.assertIn(dictModel["object_type"], self.oc_operator_with_control_flow_heuristic.control_flow.keys())
+            self.assertIn(dictModel["object_type"], self.oc_operator_with_control_flow_heuristic.__control_flow.keys())
             # Check if the generated model is a HeuristicsNet
             self.assertIsInstance(dictModel["model"], HeuristicsNet)
 
@@ -83,7 +83,7 @@ class TestOCOperator(unittest.TestCase):
         # Check if the number of emitted models matches the expected count
         self.assertEqual(len(emitted_models), 11)
         # Check if the control flow is empty
-        self.assertEqual(self.operator_without_cf.control_flow, {})
+        self.assertEqual(self.operator_without_cf.__control_flow, {})
         for dictModel in emitted_models:
             # Check if the generated model is a HeuristicsNet
             self.assertIsInstance(dictModel["model"], HeuristicsNet)
@@ -110,6 +110,6 @@ class TestOCOperator(unittest.TestCase):
 
         for dictModel in emitted_models:
             # Check if the object type is equal to keys of the control flow
-            self.assertIn(dictModel["object_type"], self.oc_operator_with_control_flow_heuristic.control_flow.keys())
+            self.assertIn(dictModel["object_type"], self.oc_operator_with_control_flow_heuristic.__control_flow.keys())
             # Check if the generated model is a HeuristicsNet
             self.assertIsInstance(dictModel["model"], HeuristicsNet)

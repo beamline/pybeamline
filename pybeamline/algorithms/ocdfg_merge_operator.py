@@ -28,35 +28,35 @@ class OCDFGMerger:
     Merges object-centric DFGs into a global ODFM structure.
     """
     def __init__(self):
-        self.dfgs = defaultdict() # Dictionary of object type to DFG
-        self.dfm = OCDFG() # Directly-Follows Multigraph
+        self.__dfgs = defaultdict() # Dictionary of object type to DFG
+        self.__ocdfg = OCDFG() # OCDFG (Object-Centric Directed Follows Graph)
 
     def merge(self,object_type: str, dfg, relation_tracker: Optional[ObjectRelationTracker] = None) -> tuple[OCDFG, ObjectRelationTracker] | OCDFG:
         """
         Merge a new model (object-type specific) into the global DFM structure.
         """
         # Overwrite old model
-        self.dfgs[object_type] = dfg
+        self.__dfgs[object_type] = dfg
 
         # Reconstruct ODFG
-        self.dfm = OCDFG()
-        for obj_type1, dfg_model in self.dfgs.items():
+        self.__ocdfg = OCDFG()
+        for obj_type1, dfg_model in self.__dfgs.items():
             for (a1, a2) in dfg_model.dfg.keys():
                 freq = dfg_model.dfg[(a1, a2)]
                 # Traditional Union Merge based on similar activity names
                 if relation_tracker is None:
-                    self.dfm.add_edge(a1, obj_type1, a2, freq)
+                    self.__ocdfg.add_edge(a1, obj_type1, a2, freq)
                     continue
 
                 # Relation-Aware merge: Only if the activities are shared
                 # Check if two activities share an event
-                for obj_type2 in self.dfgs.keys():
+                for obj_type2 in self.__dfgs.keys():
                     if obj_type2 == obj_type1:
                         continue
 
                     if relation_tracker.shared_event(obj_type1, obj_type2, a1) or relation_tracker.shared_event(obj_type1, obj_type2, a2):
                         # Add edge to DFM
-                        self.dfm.add_edge(a1, obj_type1, a2, freq)
+                        self.__ocdfg.add_edge(a1, obj_type1, a2, freq)
 
         # Print ODFM
         # print("\n[ODFM — Definition 8] - Object-Centric Process Mining: Dealing with Divergence and Convergence...")
@@ -65,9 +65,9 @@ class OCDFGMerger:
 
         # Return merged model
         if relation_tracker:
-            return self.dfm, relation_tracker
+            return self.__ocdfg, relation_tracker
         else:
-            return self.dfm
+            return self.__ocdfg
 
 
     def should_update(self, obj_type, new_model):
@@ -77,9 +77,9 @@ class OCDFGMerger:
         """
         # If its first time seeing this object type and its not empty — update
         new_keys = set(new_model.dfg.keys())
-        if obj_type not in self.dfgs:
+        if obj_type not in self.__dfgs:
             return bool(new_keys)
 
         # If keys are changed — update
-        old_keys = set(self.dfgs[obj_type].dfg.keys())
+        old_keys = set(self.__dfgs[obj_type].dfg.keys())
         return new_keys != old_keys
