@@ -2,6 +2,7 @@ from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.ocdfg_merge_operator import ocdfg_merge_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
+from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
 
 test_events_phaseflow = [
@@ -23,8 +24,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
-#combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -46,15 +47,15 @@ def save_snapshots(ocdfg, relation_tracker=None):
     """
     visualizer.save(ocdfg, relation_tracker)
 
-
+from reactivex import operators as ops
 # pipe the combined log to the OCOperator op
 emitted = []
 combined_log.pipe(
-    #ops.do_action(lambda x: print(f"Event: {x}")),
+    ops.do_action(lambda x: print(f"Event: {x}")),
     #ops.take(1000),
-    oc_operator(control_flow),
-    ocdfg_merge_operator(),
-).subscribe(lambda result: save_snapshots(result))
+    oc_operator(),
+    #ocdfg_merge_#operator(),
+).subscribe()
 
 
 #visualizer.generate_side_by_side_gif()

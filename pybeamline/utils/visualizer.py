@@ -24,7 +24,7 @@ class Visualizer:
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
-    def draw_ocdfg(self, dfm: OCDFG) -> Digraph:
+    def draw_ocdfg(self, ocdfg: OCDFG) -> Digraph:
         """
         Draws an OCDFG using Graphviz with clearly marked start and end nodes per object type.
         :param dfm: OCDFG instance
@@ -32,7 +32,7 @@ class Visualizer:
         """
         dot = Digraph(format="png")
 
-        for obj_type, transitions in dfm.edges.items():
+        for obj_type, transitions in ocdfg.edges.items():
             color = self._get_color(obj_type)
 
             # Draw edges with frequency labels
@@ -46,10 +46,10 @@ class Visualizer:
             dot.node(start_node, label=f"Start ({obj_type})", shape="ellipse", style="filled", fillcolor=color)
             dot.node(end_node, label=f"End ({obj_type})", shape="ellipse", style="filled", fillcolor=color)
 
-            for act in dfm.start_activities.get(obj_type, set()):
+            for act in ocdfg.start_activities.get(obj_type, set()):
                 dot.edge(start_node, act, style="dashed", color=color)
 
-            for act in dfm.end_activities.get(obj_type, set()):
+            for act in ocdfg.end_activities.get(obj_type, set()):
                 dot.edge(act, end_node, style="dashed", color=color)
 
         return dot

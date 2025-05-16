@@ -4,7 +4,7 @@ from reactivex import Observable
 from reactivex import operators as ops
 
 from pybeamline.boevent import BOEvent
-from pybeamline.sources.ocel_log_source import ocel_log_source_from_file
+from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 
 
 class TestOcelJsonLogSource(unittest.TestCase):

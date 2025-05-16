@@ -16,7 +16,7 @@ def oc_operator(control_flow: Dict[str, Callable] = None, uml_version: bool = Fa
 
     :param uml_version:
     :param control_flow: (Optional[Dict[str, Callable]]):
-    A mapping from object type names to their mining operators.
+    A mapping from object type names to their stream mining algorithms.
     If None, dynamic discovery will be enabled and default miners used.
 
     :return:
@@ -24,11 +24,11 @@ def oc_operator(control_flow: Dict[str, Callable] = None, uml_version: bool = Fa
     """
     # Validate control_flow
     if control_flow is not None and not isinstance(control_flow, dict):
-        raise ValueError("control_flow must be a dictionary mapping object types to miner functions.")
+        raise TypeError("control_flow must be a dictionary mapping object types to miner callables.")
     for key, value in (control_flow or {}).items():
         if not isinstance(value, Callable):
             raise ValueError(
-                f"control_flow values must be callables (stream operators), got {type(value).__name__} for object type '{key}'")
+                f"control_flow values must be callables (stream mining algorithms), got {type(value).__name__} for object type '{key}'")
 
     return OCOperator(control_flow=control_flow, uml_version=uml_version).op()
 
@@ -48,12 +48,7 @@ class OCOperator:
 
     def _register_stream(self, obj_type, miner_func=None):
         """Set up subject and output stream for a new object type."""
-        if obj_type in self.__subjects:
-            return
-
-        print(f"[OCOperator] Registering stream for object type: {obj_type}")
         subject = Subject()
-
         # Use provided miner_func or default to a new lossy counting instance
         miner = miner_func or heuristics_miner_lossy_counting(50)
 
@@ -134,3 +129,15 @@ class OCOperator:
         ).pipe(
             ops.merge(self.__output_subject)
         )
+
+    def get_mode(self):
+        """
+        Returns the current mode of the operator.
+        """
+        return self.__dynamic_mode
+
+    def get_control_flow(self):
+        """
+        Returns the current control flow of the operator.
+        """
+        return self.__control_flow

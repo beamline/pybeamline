@@ -1,6 +1,6 @@
 from pybeamline.boevent import BOEvent
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.sources.ocel_log_source import ocel_log_source_from_file
+from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 from reactivex import operators as ops
 
