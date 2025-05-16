@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
+
 class AbstractEvent(ABC):
+
     @abstractmethod
     def get_event_name(self):
         """

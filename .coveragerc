@@ -5,6 +5,7 @@ omit =
     */tests/*
     */__init__.py
     */setup.py
+    *pybeamline/algorithms/conformance/*
 
 [report]
 exclude_lines =
