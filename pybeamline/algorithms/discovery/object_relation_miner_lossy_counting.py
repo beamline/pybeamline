@@ -43,6 +43,8 @@ class ObjectRelationMinerLossyCounting:
         self.__activity_object_relations: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, int]]] = {}
         self.__activity_object_presence: Dict[str, Set[str]] = {}
 
+        self.__object_type_tracking: Dict[str, Tuple[int, int]] = {} # obj_type → (frequency, last_bucket)
+
         self.observed_events = 1
         self.bucket_width = int(1 / max_approx_error)
 
@@ -51,6 +53,11 @@ class ObjectRelationMinerLossyCounting:
         activity = event.get_event_name()
         omap = event.get_omap()
         types = list(omap.keys())
+
+        # Track frequencies and update bucket of seen object types
+        for obj_type in types:
+            freq, _ = self.__object_type_tracking.get(obj_type, (0, current_bucket))
+            self.__object_type_tracking[obj_type] = (freq + 1, current_bucket)
 
         # Record presence of activity and object types
         if activity not in self.__activity_object_presence:
@@ -75,7 +82,32 @@ class ObjectRelationMinerLossyCounting:
 
                 self.__activity_object_relations[activity][key][cardinality] += 1
 
+        # Bucket cleaning time
+        if self.observed_events % self.bucket_width == 0:
+            self._cleanup(self.observed_events)
+
         self.observed_events += 1
+
+    def _cleanup(self, current_bucket: int):
+        stale_types = [obj for obj, (freq, bucket) in self.__object_type_tracking.items()
+                       if freq + bucket <= current_bucket]
+
+        if stale_types:
+            print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
+
+        for obj_type in stale_types:
+            del self.__object_type_tracking[obj_type]
+
+            for activity in self.__activity_object_presence:
+                self.__activity_object_presence[activity].discard(obj_type)
+
+            for activity in self.__activity_object_relations:
+                rels = self.__activity_object_relations[activity]
+                keys_to_remove = [k for k in rels if obj_type in k]
+                for k in keys_to_remove:
+                    del rels[k]
+                    print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
+
 
     def get_model(self) -> ObjectRelationModel:
         activities = []

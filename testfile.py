@@ -22,6 +22,10 @@ test_events_phaseflow = [
     {"activity": "Receive Review", "objects": {"Customer": ["c1"], "Order": ["o1"]}},
 ]
 
+test_only_order = [
+    {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
+    {"activity": "Create Order", "objects": {"Customer": ["c1"], "Order": ["o1"]}}]
+
 test_events_phaseflow_ends_early = [
     {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
     {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
@@ -30,8 +34,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
-combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_only_order, 20000)], shuffle=False)
+#combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -76,16 +80,16 @@ combined_log.pipe(
 
 print(f"Length of emitted: {len(emitted_relations)}")
 for i, m in enumerate(emitted_relations):
-    if i% 200 == 0:
+    if i% 2000 == 0:
         visualizer.save_relation(m)
 
-visualizer.generate_relation_gif()
+#visualizer.generate_relation_gif()
 
 for i, m in enumerate(emitted_ocdfgs):
     if i% 200 == 0:
         visualizer.save(m)
 
-visualizer.generate_ocdfg_gif()
+#visualizer.generate_ocdfg_gif()
 
 #for i, m in enumerate(emitted):
 #    print(m["relation"])
