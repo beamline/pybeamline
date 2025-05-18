@@ -30,8 +30,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
-#combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,200),(test_events_phaseflow, 50)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -67,11 +67,8 @@ def get_relations(x):
 
 
 combined_log.pipe(
-    ops.do_action(lambda e: print(f"Event: {e}")),
-    oc_operator(control_flow, track_relations=True),
-    ops.do_action(lambda x: print(f"Before merge: {x}")),
+    oc_operator(track_relations=True),
     ocdfg_merge_operator(),
-    ops.do_action(lambda x: print(f"After merge: {x}")),
 ).subscribe(on_next=lambda x: get_relations(x))
 
 
@@ -79,13 +76,16 @@ combined_log.pipe(
 
 print(f"Length of emitted: {len(emitted_relations)}")
 for i, m in enumerate(emitted_relations):
-    if i% 20 == 0:
+    if i% 200 == 0:
         visualizer.save_relation(m)
 
+visualizer.generate_relation_gif()
+
 for i, m in enumerate(emitted_ocdfgs):
-    if i% 20 == 0:
+    if i% 200 == 0:
         visualizer.save(m)
 
+visualizer.generate_ocdfg_gif()
 
 #for i, m in enumerate(emitted):
 #    print(m["relation"])

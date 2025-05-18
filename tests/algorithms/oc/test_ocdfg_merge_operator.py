@@ -1,5 +1,5 @@
 import unittest
-
+from reactivex import operators as ops
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator
@@ -75,10 +75,12 @@ class TestOCDFGMergeOperator(unittest.TestCase):
         emitted_models = []
         self.combined_log.pipe(
             self.oc_operator_with_budget.op(),
-            ocdfg_merge_operator()
+            ocdfg_merge_operator(),
+            ops.filter(lambda x: x.get("ocdfg") is not None),
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg))
 
-        for merged_ocdfg in emitted_models:
+        for output in emitted_models:
+            merged_ocdfg = output["ocdfg"]
             # No empty models should be emitted
             self.assertTrue(len(merged_ocdfg.edges) > 0)
             self.assertTrue(len(merged_ocdfg.activities) > 0)

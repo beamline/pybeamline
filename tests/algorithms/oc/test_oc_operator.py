@@ -12,18 +12,18 @@ class TestOCOperator(unittest.TestCase):
         # Initialize the OCOperator with a mock control flow
         self.oc_operator_with_control_flow_heuristic = OCOperator(control_flow={
             "Customer": heuristics_miner_lossy_counting(10),
-            "Order": heuristics_miner_lossy_counting(11),
+            "Order": heuristics_miner_lossy_counting(10),
             "Item": heuristics_miner_lossy_counting(10),
             "Shipment": heuristics_miner_lossy_counting(10),
         })
 
         self.oc_operator_with_control_flow_heuristic_budget = OCOperator(control_flow={
             "Customer": heuristics_miner_lossy_counting_budget(10),
-            "Order": heuristics_miner_lossy_counting_budget(11),
+            "Order": heuristics_miner_lossy_counting_budget(10),
             "Item": heuristics_miner_lossy_counting_budget(10),
             "Shipment": heuristics_miner_lossy_counting_budget(10),
         })
-        self.operator_without_cf = OCOperator()
+        self.operator_without_cf = OCOperator(control_flow={})
 
     def test_oc_operator_mode(self):
        # Check if the operator is initialized correctly with control flow
@@ -81,7 +81,7 @@ class TestOCOperator(unittest.TestCase):
             on_next=lambda x: emitted_models.append(x),
         )
         # Check if the number of emitted models matches the expected count
-        self.assertEqual( 11,len(emitted_models))
+        self.assertEqual( 10,len(emitted_models))
         # Check if the control flow is empty
         self.assertEqual(0, len(self.operator_without_cf.get_control_flow().keys()))
         for dictModel in emitted_models:
@@ -131,14 +131,14 @@ class TestOCOperator(unittest.TestCase):
 
         try:
             ocel_source.pipe(
-                oc_operator(cf_not_correct_type)
+                oc_operator(control_flow=cf_not_correct_type)
             ).subscribe()
         except TypeError as e:
-            self.assertEqual("control_flow must be a dictionary mapping object types to miner callables.",str(e))
+            self.assertEqual("control_flow must be a dict mapping object types to StreamMiner callables.",str(e))
 
         try:
             ocel_source.pipe(
                 oc_operator(control_flow=cf_not_correct_values)
             ).subscribe()
         except ValueError as e:
-            self.assertEqual(f"control_flow values must be callables (stream mining algorithms), got bool for object type 'Customer'", str(e))
+            self.assertEqual("control_flow values must be StreamMiner callables, got bool for 'Customer'", str(e))

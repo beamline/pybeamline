@@ -1,7 +1,5 @@
 import os
-import webbrowser
 from PIL import Image
-from attr import attributes
 from graphviz import Digraph, Graph
 import random
 from graphviz import Graph
@@ -12,8 +10,8 @@ class Visualizer:
     def __init__(self):
         self.object_type_colors = {}
         self.counter = 0
-        self.snapshots_dfm = []
-        self.snapshots_uml = []
+        self.snapshots_ocdfg = []
+        self.snapshots_relation = []
         self.current_index = 0
         self.snapshot_dir = os.path.join(os.getcwd(), "snapshots")
 
@@ -57,26 +55,28 @@ class Visualizer:
 
     def save(self, ocdfg: OCDFG):
         ocdfg_dot = self.draw_ocdfg(ocdfg)
-        #uml_dot = self.draw_uml(uml)
-
         # Save ocdfg
         ocdfg_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
 
         ocdfg_dot.render(ocdfg_path, cleanup=True, format="png")
-        #uml_dot.render(uml_path, cleanup=True, format="png")
-
-        self.snapshots_dfm.append(ocdfg_path)
-        #self.snapshots_uml.append(uml_path)
+        self.snapshots_ocdfg.append(ocdfg_path)
         self.counter += 1
 
-    def draw_relation(self, model: ObjectRelationModel) -> Graph:
+    def draw_relation(self, model: ObjectRelationModel, max_activities_per_column=5) -> Graph:
         dot = Graph(name="ObjectCentricRelations", format="png")
-        dot.attr(rankdir="LR")  # top-bottom stacking
-        dot.attr(center="true")  # center horizontally
         dot.attr(compound="true")
-        dot.attr(ranksep="1.2", nodesep="0.8")
+        dot.attr(fontsize="14")
+
+        col_idx = 0
+        act_count = 0
+
         for i, activity in enumerate(model.activities):
-            with dot.subgraph(name=f"cluster_{i}") as sub:
+            if act_count >= max_activities_per_column:
+                col_idx += 1
+                act_count = 0
+            act_count += 1
+
+            with dot.subgraph(name=f"cluster_col_{col_idx}_{i}") as sub:
                 sub.attr(label=activity.activity)
                 sub.attr(style="dashed")
                 sub.attr(rank="same")
@@ -91,6 +91,10 @@ class Visualizer:
                     tgt_id = f"{activity.activity}_{edge.target}"
                     sub.edge(src_id, tgt_id, label=edge.cardinality.value, fontname="Courier", fontsize="20")
 
+        # Improve layout for left-to-right columns
+        dot.attr(rankdir="LR")
+        dot.attr(nodesep="1.0", ranksep="1.0")
+
         return dot
 
     def save_relation(self, relation_model: ObjectRelationModel):
@@ -98,42 +102,59 @@ class Visualizer:
         relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
 
         relation_dot.render(relation_path, cleanup=True, format="png")
-        self.snapshots_dfm.append(relation_path)
+        self.snapshots_relation.append(relation_path)
         self.counter += 1
 
-
-    #def draw_relation(self, relation: ObjectRelation) -> Digraph:
-
-
-
-    def generate_side_by_side_gif(self, out_file="dfm_uml_evolution.gif", duration=1500, size=(2500, 1200)):
-        if not self.snapshots_dfm or not self.snapshots_uml:
-            print("No snapshots to include in GIF.")
+    def generate_ocdfg_gif(self, out_file="ocdfg_evolution.gif", duration=1500):
+        if not self.snapshots_ocdfg:
+            print("No OCDFG snapshots to include in GIF.")
             return
 
-        combined_images = []
+        images = [Image.open(path + ".png") for path in self.snapshots_ocdfg]
+        canvas_size = self._get_max_canvas_size(images)
 
-        for dfm_img_path, uml_img_path in zip(self.snapshots_dfm, self.snapshots_uml):
-            dfm_img = Image.open(dfm_img_path+".png")
-            uml_img = Image.open(uml_img_path+".png")
-
-            # Create a combined image
-            combined_width = 1200
-            combined_height = 1200
-            combined = Image.new("RGB", (combined_width, combined_height), (255, 255, 255))
-
-            # Paste the two images side by side
-            combined.paste(dfm_img, (0, 0))
-            combined.paste(uml_img, (dfm_img.width, 0))
-
-            combined_images.append(combined)
-
-        # Save the combined images as a GIF
-        combined_images[0].save(
+        padded_images = [self._center_on_canvas(img, canvas_size) for img in images]
+        padded_images[0].save(
             out_file,
             save_all=True,
-            append_images=combined_images[1:],
+            append_images=padded_images[1:],
             duration=duration,
             loop=0
         )
         print(f"[GIF] Saved to {out_file}")
+
+    def generate_relation_gif(self, out_file="relation_evolution.gif", duration=1500):
+        if not self.snapshots_relation:
+            print("No relation snapshots to include in GIF.")
+            return
+
+        images = [Image.open(path + ".png") for path in self.snapshots_relation]
+        canvas_size = self._get_max_canvas_size(images)
+
+        padded_images = [self._center_on_canvas(img, canvas_size) for img in images]
+        padded_images[0].save(
+            out_file,
+            save_all=True,
+            append_images=padded_images[1:],
+            duration=duration,
+            loop=0
+        )
+        print(f"[GIF] Saved to {out_file}")
+
+    def _get_max_canvas_size(self, images):
+        max_width = max(img.width for img in images)
+        max_height = max(img.height for img in images)
+        return (max_width, max_height)
+
+    def _center_on_canvas(self, img, canvas_size):
+        canvas = Image.new("RGB", canvas_size, (255, 255, 255))
+        x_offset = (canvas_size[0] - img.width) // 2
+        y_offset = (canvas_size[1] - img.height) // 2
+        canvas.paste(img, (x_offset, y_offset))
+        return canvas
+
+    def _center_vertically(self, img, target_height):
+        canvas = Image.new("RGB", (img.width, target_height), (255, 255, 255))
+        y_offset = (target_height - img.height) // 2
+        canvas.paste(img, (0, y_offset))
+        return canvas
