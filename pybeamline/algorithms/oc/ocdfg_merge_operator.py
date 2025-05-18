@@ -1,37 +1,56 @@
 from collections import defaultdict
 from typing import Callable, Optional
+
 from reactivex import operators as ops, Observable
 from pybeamline.objects.ocdfg import OCDFG
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
+from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import ObjectRelationMinerLossyCounting
+from reactivex import merge
 
 
 def ocdfg_merge_operator() -> Callable[[Observable], Observable]:
+    """"
+    Reactive operator that:
+    - Merges object-centric DFGs into OCDFG
+    - Tracks relation snapshots separately
+    - Emits either OCDFG or relation state as separate events
     """
-    Reactive operator that merges incoming object-type DFG models
-    into a ODFM structure, using OCDFGMerger.
-    :return: RxPy operator (function) which is a MergedOCDFG
-    """
-    # Initialize the OCDFGMerger
     merger = OCDFGMerger()
-    return lambda stream: stream.pipe(
-        #ops.filter(lambda model_dict: merger.should_update(model_dict["object_type"], model_dict["model"])),
-        ops.map(lambda model_dict: merger.merge(
-            model_dict["object_type"],
-            model_dict["model"],
-            model_dict.get("relation", None)  # relation_tracker is optional
-        ))
-    )
 
+    def operator(stream: Observable) -> Observable:
+        return stream.pipe(
+            ops.publish(lambda shared: merge(
+
+                # Relation-only stream
+                shared.pipe(
+                    ops.filter(lambda x: "relations" in x),
+                    ops.map(lambda x: {"type": "relations", "relations": x["relations"]})
+                ),
+
+                # Model-only stream (DFG mining)
+                shared.pipe(
+                    ops.filter(lambda x: "model" in x and x["model"] is not None),
+                    ops.map(lambda x: merger.merge(
+                        x["object_type"],
+                        x["model"],
+                    )),
+                    ops.map(lambda merged: {
+                        "type": "ocdfg",
+                        "ocdfg": merged[0] if isinstance(merged, tuple) else merged,
+                    })
+                )
+            ))
+        )
+    return operator
 
 class OCDFGMerger:
     """
-    Merges object-centric DFGs into a global ODFM structure.
+    Merges object-centric DFGs into a global OCDFG structure.
     """
     def __init__(self):
         self.__dfgs = defaultdict() # Dictionary of object type to DFG
         self.__ocdfg = OCDFG() # OCDFG (Object-Centric Directed Follows Graph)
 
-    def merge(self, object_type: str, dfg, relation_tracker: Optional[ObjectRelationTracker] = None) -> OCDFG | tuple[OCDFG, ObjectRelationTracker]:
+    def merge(self, object_type: str, dfg, relation_tracker: Optional[ObjectRelationMinerLossyCounting] = None) -> OCDFG | tuple[OCDFG, ObjectRelationMinerLossyCounting]:
         # Store the latest DFG model
         self.__dfgs[object_type] = dfg
 
@@ -43,23 +62,14 @@ class OCDFGMerger:
             sources, targets = set(), set()
 
             for (a1, a2), freq in dfg_model.dfg.items():
-                if relation_tracker is None:
-                    self.__ocdfg.add_edge(a1, obj_type, a2, freq)
-                    sources.add(a1)
-                    targets.add(a2)
-                else:
-                    # Only merge edges if activities are known to relate
-                    for other_obj_type in self.__dfgs:
-                        if other_obj_type == obj_type:
-                            continue
-                        if relation_tracker.shared_event(obj_type, other_obj_type, a1) or \
-                           relation_tracker.shared_event(obj_type, other_obj_type, a2):
-                            self.__ocdfg.add_edge(a1, obj_type, a2, freq)
-                            break  # Once shared relation is confirmed, skip further checks
+
+                self.__ocdfg.add_edge(a1, obj_type, a2, freq)
+                sources.add(a1)
+                targets.add(a2)
 
             # Add start and end activities
-            start_activities = sources - targets
-            end_activities = targets - sources
+            start_activities = sources - targets #  Assumption: start activities are not targets
+            end_activities = targets - sources # Assumption: end activities are not sources
             self.__ocdfg.start_activities[obj_type] = start_activities
             self.__ocdfg.end_activities[obj_type] = end_activities
 

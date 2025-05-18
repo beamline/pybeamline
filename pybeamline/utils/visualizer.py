@@ -2,10 +2,11 @@ import os
 import webbrowser
 from PIL import Image
 from attr import attributes
-from graphviz import Digraph
+from graphviz import Digraph, Graph
 import random
+from graphviz import Graph
+from pybeamline.objects.object_relation_model import ObjectRelationModel
 from pybeamline.objects.ocdfg import OCDFG
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 class Visualizer:
     def __init__(self):
@@ -54,57 +55,56 @@ class Visualizer:
 
         return dot
 
-    def draw_uml(self, uml: ObjectRelationTracker, size=(1000, 700)) -> Digraph:
-        """
-        Draws the UML-style diagram of object relations and cardinalities.
+    def save(self, ocdfg: OCDFG):
+        ocdfg_dot = self.draw_ocdfg(ocdfg)
+        #uml_dot = self.draw_uml(uml)
 
-        :param uml: ObjectRelationTracker instance
-        :param size: Size of the UML diagram (width, height)
-        :return: Graphviz Digraph object
-        """
-        dot = Digraph(format="png")
-        dot.attr(rankdir='BT', size=f"{size[0] / 100},{size[1] / 100}", dpi="150")  # Fixed size
+        # Save ocdfg
+        ocdfg_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
 
-        # Draw object type nodes with attributes and activities
-        for obj_type, node in uml.nodes.items():
-            color = self._get_color(obj_type)
-            attributes = "\\l".join(sorted(node.attributes)) if node.attributes else ""
-            activities = "\\l".join(sorted(node.activities)) if node.activities else ""
+        ocdfg_dot.render(ocdfg_path, cleanup=True, format="png")
+        #uml_dot.render(uml_path, cleanup=True, format="png")
 
-            # Separate sections for attributes and activities in the UML node
-            label = f"{{ {obj_type} | + Attributes:\\l{attributes}\\l | + Activities:\\l{activities}\\l }}"
+        self.snapshots_dfm.append(ocdfg_path)
+        #self.snapshots_uml.append(uml_path)
+        self.counter += 1
 
-            # Create the UML node with the specified label and color
-            dot.node(
-                obj_type,
-                label=label,
-                shape="record",
-                style="filled",
-                fillcolor="#e1e1e1",  # Background color white for contrast
-                color=color,
-            )
+    def draw_relation(self, model: ObjectRelationModel) -> Graph:
+        dot = Graph(name="ObjectCentricRelations", format="png")
+        dot.attr(rankdir="LR")  # top-bottom stacking
+        dot.attr(center="true")  # center horizontally
+        dot.attr(compound="true")
+        dot.attr(ranksep="1.2", nodesep="0.8")
+        for i, activity in enumerate(model.activities):
+            with dot.subgraph(name=f"cluster_{i}") as sub:
+                sub.attr(label=activity.activity)
+                sub.attr(style="dashed")
+                sub.attr(rank="same")
+                sub.attr(fontsize="16")
 
-        # Draw relations with cardinalities
-        for obj_type, node in uml.nodes.items():
-            for target_type, cardinality in node.get_cardinalities().items():
-                dot.edge(obj_type, target_type, label=cardinality.value)
+                for obj_type in activity.object_types:
+                    node_id = f"{activity.activity}_{obj_type}"
+                    sub.node(node_id, label=obj_type, shape="ellipse")
+
+                for edge in activity.edges:
+                    src_id = f"{activity.activity}_{edge.source}"
+                    tgt_id = f"{activity.activity}_{edge.target}"
+                    sub.edge(src_id, tgt_id, label=edge.cardinality.value, fontname="Courier", fontsize="20")
 
         return dot
 
-    def save(self, ocdfg: OCDFG, uml: ObjectRelationTracker):
-        dfm_dot = self.draw_ocdfg(ocdfg)
-        #uml_dot = self.draw_uml(uml)
+    def save_relation(self, relation_model: ObjectRelationModel):
+        relation_dot = self.draw_relation(relation_model)
+        relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
 
-        # Save both DFM and UML
-        dfm_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
-        #uml_path = os.path.join(self.snapshot_dir, f"uml_snapshot_{self.counter}")
-
-        dfm_dot.render(dfm_path, cleanup=True, format="png")
-        #uml_dot.render(uml_path, cleanup=True, format="png")
-
-        self.snapshots_dfm.append(dfm_path)
-        #self.snapshots_uml.append(uml_path)
+        relation_dot.render(relation_path, cleanup=True, format="png")
+        self.snapshots_dfm.append(relation_path)
         self.counter += 1
+
+
+    #def draw_relation(self, relation: ObjectRelation) -> Digraph:
+
+
 
     def generate_side_by_side_gif(self, out_file="dfm_uml_evolution.gif", duration=1500, size=(2500, 1200)):
         if not self.snapshots_dfm or not self.snapshots_uml:

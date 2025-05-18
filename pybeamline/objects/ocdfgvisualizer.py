@@ -5,7 +5,6 @@ from PIL import Image
 from graphviz import Digraph
 import random
 from pybeamline.objects.ocdfg import OCDFG
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 
 class OCDFGVisualizer:

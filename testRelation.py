@@ -1,7 +1,6 @@
 from pybeamline.boevent import BOEvent
-from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
+from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import ObjectRelationMinerLossyCounting
 from reactivex import operators as ops
 
 test_events_one_obj = [
@@ -17,7 +16,7 @@ test_events_two_obj = [
 #combined_log = dict_test_ocel_source([(test_events_two_obj,50),(test_events_one_obj, 200)], shuffle=False)
 combined_log = ocel_log_source_from_file("tests/socel2_hinge.xml")
 
-objT = ObjectRelationTracker()
+objT = ObjectRelationMinerLossyCounting()
 
 
 def ingest(event: BOEvent):

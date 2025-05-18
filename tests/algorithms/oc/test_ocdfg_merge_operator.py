@@ -61,11 +61,11 @@ class TestOCDFGMergeOperator(unittest.TestCase):
 
         for merged_ocdfg in emitted_models:
             # No empty models should be emitted
-            self.assertTrue(len(merged_ocdfg.edges.keys()) > 0)
-            self.assertTrue(len(merged_ocdfg.activities) > 0)
+            self.assertTrue(len(merged_ocdfg["ocdfg"].edges.keys()) > 0)
+            self.assertTrue(len(merged_ocdfg["ocdfg"].activities) > 0)
 
             # Check if the merged model contains the expected activities
-            for activity in merged_ocdfg.activities:
+            for activity in merged_ocdfg["ocdfg"].activities:
                 self.assertIn(activity, {"Register Customer", "Create Order",
                                          "Add Item", "Reserve Item", "Cancel Order",
                                          "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})

@@ -1,7 +1,7 @@
 import os
 import webbrowser
 from graphviz import Digraph
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
+from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import ObjectRelationMinerLossyCounting
 
 
 class UMLVisualizer:
@@ -12,7 +12,7 @@ class UMLVisualizer:
         os.makedirs(self.snapshot_dir, exist_ok=True)
         self.current_index = 0
 
-    def draw_uml(self, tracker: ObjectRelationTracker) -> Digraph:
+    def draw_uml(self, tracker: ObjectRelationMinerLossyCounting) -> Digraph:
         """
         Generates a UML diagram for the object relations stored in the tracker.
 
@@ -37,7 +37,7 @@ class UMLVisualizer:
 
         return dot
 
-    def render(self, tracker: ObjectRelationTracker, view=True):
+    def render(self, tracker: ObjectRelationMinerLossyCounting, view=True):
         """
         Renders the UML diagram using Graphviz and optionally opens it.
 
@@ -50,7 +50,7 @@ class UMLVisualizer:
         self.snapshots.append(filename + ".png")
         self.counter += 1
 
-    def save(self, tracker: ObjectRelationTracker, filename: str):
+    def save(self, tracker: ObjectRelationMinerLossyCounting, filename: str):
         """
         Saves the UML diagram to a file.
 
