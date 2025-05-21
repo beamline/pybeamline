@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Protocol, Callable, Any
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import operators as ops, Observable
+from reactivex import operators as ops, Observable, from_iterable
 from reactivex.subject import Subject
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
@@ -9,7 +9,7 @@ from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import
 
 # Protocol defining how a miner should behave: transforms BOEvent stream → HeuristicsNet stream
 class StreamMiner(Protocol):
-    def __call__(self, stream: Observable[BOEvent]) -> Observable[HeuristicsNet]:
+    def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
         ...  # pragma: no cover
 
 # Factory function that return stream operator
@@ -42,38 +42,27 @@ class OCOperator:
         self.__control_flow: Dict[str, StreamMiner] = control_flow
         self.__dynamic_mode: bool = not bool(control_flow)
         self.__track_relations: bool = track_relations
-        self.__subjects: Dict[str, Subject[BOEvent]] = {}
+        self.__miner_subjects: Dict[str, Subject[BOEvent]] = {}
         self.__output_subject: Subject = Subject()
 
-        # Optional relational miner setup
+        # Pre-register the relation stream if tracking is enabled
         if self.__track_relations:
-            self.__relational_subject = Subject()
-            self.__relation_operator = object_relations_miner_lossy_counting()
-
-            # Connect relational mining to the output stream
-            self.__relational_subject.pipe(
-                self.__relation_operator,
-                ops.map(lambda rel_model: {
-                    "relations": rel_model
-                })
-            ).subscribe(
-                self.__output_subject,
-                on_error=lambda e: print(f"Error in relation miner: {e}")
-            )
+            self._register_stream("relation", miner=object_relations_miner_lossy_counting())
 
         # Pre-register static streams if not in dynamic mode
         if not self.__dynamic_mode:
             for obj_type, miner in self.__control_flow.items():
                 self._register_stream(obj_type, miner)
 
+
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         # Create a new subject and link it to a mining operator
         subject: Subject[BOEvent] = Subject()
         miner_op: StreamMiner = miner or heuristics_miner_lossy_counting(50)
-        self.__subjects[obj_type] = subject
+        self.__miner_subjects[obj_type] = subject
 
         # Choose appropriate pipeline
-        stream_op = _relation_stream(obj_type, miner_op) if self.__track_relations else _basic_stream(obj_type, miner_op)
+        stream_op = _relation_stream(miner_op) if obj_type=="relation" else _basic_stream(obj_type, miner_op)
 
         # Subscribe pipeline to subject and forward results
         subject.pipe(
@@ -83,14 +72,19 @@ class OCOperator:
             on_error=lambda e: print(f"Error in miner for '{obj_type}': {e}")
         )
     def _route_to_miner(self, event: BOEvent):
-        object_type = event.get_omap_types()[0]  # Assuming single object type per event
-        if object_type not in self.__subjects:
-            if self.__dynamic_mode:
-                self._register_stream(object_type)  # Auto-register
-            else:
-                return
+        if self.__track_relations:
+            key =  "relation"
+            self.__miner_subjects[key].on_next(event)
 
-        self.__subjects[object_type].on_next(event)
+        # flatten the event to get the object type
+        for flattened_event in event.flatten():
+            obj_type = flattened_event.get_omap_types()[0]  # Assuming single object type per event
+            if obj_type not in self.__miner_subjects:
+                if self.__dynamic_mode:
+                    self._register_stream(obj_type)
+                else:
+                    continue
+            self.__miner_subjects[obj_type].on_next(flattened_event)
 
     def op(self) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
         # Returns the actual operator function that transforms a BOEvent stream
@@ -99,14 +93,7 @@ class OCOperator:
         return operator
 
     def _miner_stream(self, stream: Observable[BOEvent]) -> Observable[Dict[str, Any]]:
-        # Stream transformation pipeline:
-        # 1. Optionally emit event to relational miner
-        # 2. Flatten complex BOEvents to single BOEvents (via flatten())
-        # 3. Route each event to its appropriate miner(s)
-        # 4. Ignore elements (miners emit independently), but merge in the output stream
         routing = stream.pipe(
-            ops.do_action(lambda e: self.__relational_subject.on_next(e) if self.__track_relations else None), # TODO: Relations finish before DFG...
-            ops.flat_map(lambda e: e.flatten()),
             ops.do_action(self._route_to_miner),
             ops.ignore_elements()
         )
@@ -127,12 +114,10 @@ def _basic_stream(obj_type: str, miner: StreamMiner) -> Callable[[Observable[BOE
     )
 
 # Extended pipeline with object-relations included
-def _relation_stream(obj_type: str, miner: StreamMiner) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
+def _relation_stream(miner: StreamMiner) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
     return lambda src: src.pipe(
         miner,
-        ops.filter(lambda model: bool(getattr(model, "dfg", {}))),
         ops.map(lambda model: {
-            "object_type": obj_type,
-            "model": model,
+            "relation": model,
         })
     )

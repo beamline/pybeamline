@@ -18,7 +18,7 @@ def _infer_cardinality(count1: int, count2: int) -> Cardinality:
     else:
         return Cardinality.MANY_TO_MANY
 
-def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.0001) -> Callable[
+def object_relations_miner_lossy_counting(model_update_frequency=100, max_approx_error: float = 0.0001) -> Callable[
     [Observable[BOEvent]], Observable[Dict[str, Any]]]:
     """
     Object Relationship Miner using a lossy counting approach.
@@ -49,6 +49,7 @@ class ObjectRelationMinerLossyCounting:
         self.bucket_width = int(1 / max_approx_error)
 
     def ingest_event(self, event: BOEvent):
+        #print(f"[ObjectRelationMiner] Ingesting event: {event}")
         current_bucket = int(self.observed_events / self.bucket_width)
         activity = event.get_event_name()
         omap = event.get_omap()
@@ -92,8 +93,8 @@ class ObjectRelationMinerLossyCounting:
         stale_types = [obj for obj, (freq, bucket) in self.__object_type_tracking.items()
                        if freq + bucket <= current_bucket]
 
-        if stale_types:
-            print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
+        #if stale_types:
+            #print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
 
         for obj_type in stale_types:
             del self.__object_type_tracking[obj_type]
@@ -106,7 +107,7 @@ class ObjectRelationMinerLossyCounting:
                 keys_to_remove = [k for k in rels if obj_type in k]
                 for k in keys_to_remove:
                     del rels[k]
-                    print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
+                    #print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
 
 
     def get_model(self) -> ObjectRelationModel:
