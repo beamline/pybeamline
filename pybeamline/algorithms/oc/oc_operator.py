@@ -1,6 +1,9 @@
 from typing import Dict, Optional, Protocol, Callable, Any
+
+from httpcore import stream
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable, from_iterable
+from reactivex.disposable import Disposable
 from reactivex.subject import Subject
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.boevent import BOEvent
@@ -45,6 +48,8 @@ class OCOperator:
         self.__miner_subjects: Dict[str, Subject[BOEvent]] = {}
         self.__output_subject: Subject = Subject()
         self.active_objects: set[str] = set()
+        # keep track of each subject’s subscription
+        self.__subscriptions: Dict[str, Disposable] = {}
 
         # Pre-register the relation stream if tracking is enabled
         if self.__track_relations:
@@ -57,25 +62,24 @@ class OCOperator:
 
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
-        # Create a new subject and link it to a mining operator
-        subject: Subject[BOEvent] = Subject()
-        miner_op: StreamMiner = miner or heuristics_miner_lossy_counting(50)
+        subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
+        miner_op = miner or heuristics_miner_lossy_counting(50)
 
-        # Choose appropriate pipeline
-        if obj_type != "relation":
-            self.active_objects.add(obj_type)
-            stream_op = self._basic_stream(obj_type, miner_op)
+        if obj_type == "relation":
+            # If the object type is "relation", we use the relation miner
+            stream_op = self._relation_stream(miner)
         else:
-            stream_op = self._relation_stream(miner_op)
+            self.active_objects.add(obj_type)
+            stream_op = self._basic_stream(obj_type, miner)
 
-        # Subscribe pipeline to subject and forward results
-        subject.pipe(
-            stream_op,
-        ).subscribe(
-            self.__output_subject,
-            on_error=lambda e: print(f"Error in miner for '{obj_type}': {e}")
+        subscription = subject.pipe(stream_op).subscribe(
+            on_next=self.__output_subject.on_next,
+            on_error=lambda e: print(f"Error in miner for '{obj_type}': {e}"),
+            on_completed=lambda: None  # <- ignore the branch’s completion
         )
+        self.__subscriptions[obj_type] = subscription
+
     def _route_to_miner(self, event: BOEvent):
         if self.__track_relations:
             key =  "relation"
@@ -106,13 +110,26 @@ class OCOperator:
         return routing.pipe(ops.merge(self.__output_subject))
 
     def _deregister_stream(self, obj_types_alive: set[str]):
-        inactive_objects = self.active_objects - obj_types_alive
-        for obj_type in inactive_objects:
-            print(f"Deregistering {obj_type}...")
-            if obj_type in self.__miner_subjects:
-                self.__miner_subjects[obj_type].on_completed()
-                del self.__miner_subjects[obj_type]
-                self.active_objects.remove(obj_type)
+        print(f"Active objects: {self.active_objects}")
+        print(f"Alive objects: {obj_types_alive}")
+        inactive = self.active_objects - obj_types_alive
+        for obj_type in inactive:
+            print(f"Deregistering {obj_type}…")
+
+            # 1) complete the subject so it flushes everything it already
+            #    has and then stops (but won't close the merged output)
+            subj = self.__miner_subjects.pop(obj_type, None)
+            if subj:
+                subj.on_completed()
+
+            # 2) remove bookkeeping
+            self.active_objects.remove(obj_type)
+
+            # 3) optionally dispose the subscription if you want to
+            #    remove any leftover resources—but this is now optional:
+            sub = self.__subscriptions.pop(obj_type, None)
+            if sub:
+                sub.dispose()
 
 
     def get_mode(self) -> bool:
@@ -133,6 +150,7 @@ class OCOperator:
     def _relation_stream(self, miner: StreamMiner) -> Callable:
         return lambda src: src.pipe(
             miner,
+            #ops.do_action(print),
             ops.do_action(lambda model:self._deregister_stream(model["live_objects"])),
             ops.map(lambda model: {
                 "aer_diagram": model["aer_diagram"],

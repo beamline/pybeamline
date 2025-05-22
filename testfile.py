@@ -34,7 +34,7 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,50),(test_events_phaseflow, 250)], shuffle=False)
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,50),(test_only_order, 30000)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
@@ -73,8 +73,8 @@ def get_relations(x):
 combined_log.pipe(
     oc_operator(control_flow,track_relations=True),
     #ops.do_action(lambda x: print(f"Emitting: {x}")),
-    oc_merge_operator(),
-    ops.do_action(print)
+    #oc_merge_operator(),
+    #ops.do_action(print)
 ).subscribe(on_next=lambda x: get_relations(x))
 
 
