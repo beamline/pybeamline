@@ -84,6 +84,7 @@ class OCOperator:
                     self._register_stream(obj_type)
                 else:
                     continue
+
             self.__miner_subjects[obj_type].on_next(flattened_event)
 
     def op(self) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
@@ -98,6 +99,16 @@ class OCOperator:
             ops.ignore_elements()
         )
         return routing.pipe(ops.merge(self.__output_subject))
+
+    def _deregister_stream(self, obj_type: str):
+        """
+        Deregisters a stream for a given object type.
+        :param obj_type: The object type to deregister.
+        """
+        if obj_type in self.__miner_subjects:
+            self.__miner_subjects[obj_type].on_completed()
+            del self.__miner_subjects[obj_type]
+
 
     def get_mode(self) -> bool:
         return self.__dynamic_mode

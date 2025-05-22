@@ -6,7 +6,7 @@ from graphviz import render
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import oc_operator
-from pybeamline.algorithms.oc.ocdfg_merge_operator import ocdfg_merge_operator
+from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
@@ -71,26 +71,28 @@ def get_relations(x):
 
 
 combined_log.pipe(
-    oc_operator(control_flow,track_relations=True),
-    ops.do_action(print)
+    oc_operator(control_flow=control_flow,track_relations=True),
+    ops.do_action(lambda x: print(f"Emitting: {x}")),
+    #oc_merge_operator(),
+    #ops.do_action(print)
 ).subscribe(on_next=lambda x: get_relations(x))
 
-##ocdfg_merge_operator(),
 
 
-#print(f"Length of emitted: {len(emitted_relations)}")
-#for i, m in enumerate(emitted_relations):
-#    if i% 2000 == 0:
-#        visualizer.save_relation(m)
+""""
+print(f"Length of emitted: {len(emitted_relations)}")
+for i, m in enumerate(emitted_relations):
+    if i% 2000 == 0:
+        visualizer.save_relation(m)
 
-#visualizer.generate_relation_gif()
+visualizer.generate_relation_gif()
 
-#for i, m in enumerate(emitted_ocdfgs):
-#    if i% 200 == 0:
-#        visualizer.save(m)
+for i, m in enumerate(emitted_ocdfgs):
+    if i% 200 == 0:
+        visualizer.save(m)
 
-#visualizer.generate_ocdfg_gif()
-
+visualizer.generate_ocdfg_gif()
+"""
 #for i, m in enumerate(emitted):
 #    print(m["relation"])
 

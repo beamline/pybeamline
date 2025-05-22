@@ -3,9 +3,9 @@ from reactivex import operators as ops
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator
-from pybeamline.algorithms.oc.ocdfg_merge_operator import ocdfg_merge_operator
+from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from pybeamline.algorithms.oc.ocdfg_merge_operator import OCDFGMerger
+from pybeamline.algorithms.oc.oc_merge_operator import OCDFGMerger
 
 
 
@@ -56,7 +56,7 @@ class TestOCDFGMergeOperator(unittest.TestCase):
         emitted_models = []
         self.combined_log.pipe(
             self.oc_operator.op(),
-            ocdfg_merge_operator()
+            oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg))
 
         for merged_ocdfg in emitted_models:
@@ -75,7 +75,7 @@ class TestOCDFGMergeOperator(unittest.TestCase):
         emitted_models = []
         self.combined_log.pipe(
             self.oc_operator_with_budget.op(),
-            ocdfg_merge_operator(),
+            oc_merge_operator(),
             ops.filter(lambda x: x.get("ocdfg") is not None),
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg))
 
