@@ -5,7 +5,7 @@ from reactivex import operators as ops, Observable
 from reactivex import just, empty
 
 from pybeamline.boevent import BOEvent
-from pybeamline.objects.object_relation_model import ObjectRelationModel, ObjectTypeEdge, ActivityRelation
+from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.utils.cardinality import Cardinality
 
 def _infer_cardinality(count1: int, count2: int) -> Cardinality:
@@ -109,28 +109,26 @@ class ObjectRelationMinerLossyCounting:
                     del rels[k]
                     #print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
 
+    def get_model(self):
+        """
+        Returns:
+          - ActivityERDiagram: the per-activity ER diagrams so far
+          - Set[str]:        the set of currently ‘live’ object types
+        """
+        live_objects = set(self.__object_type_tracking.keys())
 
-    def get_model(self) -> ObjectRelationModel:
-        activities = []
+        # 2) Create an empty diagram
+        diagram = ActivityERDiagram()
 
+        # 3) For each activity, for each (type1,type2) pair, infer the cardinality
         for activity, pairs in self.__activity_object_relations.items():
-            object_types = list(self.__activity_object_presence.get(activity, []))
-            edges = []
+            for (t1, t2), counts in pairs.items():
+                most_common = max(counts.items(), key=lambda kv: kv[1])[0]  # Cardinality enum
+                diagram.add_relation(activity, t1, t2, most_common)
 
-            for (type1, type2), counts in pairs.items():
-                most_common_card = max(counts.items(), key=lambda x: x[1])[0]
-                edges.append(ObjectTypeEdge(
-                    source=type1,
-                    target=type2,
-                    cardinality=most_common_card
-                ))
+        return {"aer_diagram": diagram,
+                "live_objects": live_objects}
 
-            activities.append(ActivityRelation(
-                activity=activity,
-                object_types=object_types,
-                edges=edges
-            ))
-        return ObjectRelationModel(activities=activities)
 
     def __str__(self):
         lines = ["Activity-Object Type Relations:"]

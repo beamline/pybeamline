@@ -28,7 +28,6 @@ def heuristics_miner_lossy_counting(
 
             # Wrapping BOEvent into BEvent
             trace_name = event.get_object_ids()[0]
-           #print(f"[Heurictics Lossy Counting] to ingest event: {event}")
             b_event = BEvent(
                 activity_name=event.get_event_name(),
                 case_id=trace_name,

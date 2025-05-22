@@ -1,6 +1,8 @@
 from collections import defaultdict
 from typing import Callable, Optional, Dict, Any
 from reactivex import operators as ops, Observable
+
+from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import ObjectRelationMinerLossyCounting
 
@@ -21,18 +23,18 @@ class OCModelManager:
     """
     def __init__(self):
         self._dfg_repo = DFGRepository()
-        self._relation_repo = RelationRepository()
+        self._relation_repo = AERDiagramRepository()
 
     def process(self, msg: Dict[str, Any]) -> Dict[str, Any]:
-        if msg.get("relations") is not None:
-            self._relation_repo.update(msg["relations"])
+        if msg.get("aer_diagram") is not None:
+            self._relation_repo.update(msg["aer_diagram"])
         elif msg.get("object_type") is not None and msg.get("model") is not None:
             self._dfg_repo.update(msg["object_type"], msg["model"])
 
         ocdfg = self._build_ocdfg()
         return {
             "ocdfg": ocdfg,
-            "relations": self._relation_repo.all()
+            "aer_diagram": self._relation_repo.get(),
         }
 
     def _build_ocdfg(self) -> OCDFG:
@@ -57,7 +59,7 @@ class OCModelManager:
 class DFGRepository:
     """ Holds the states of latest per-object-type DFGs seen """
     def __init__(self):
-        self._dfgs: Dict[str, Any] = {}
+        self._dfgs: Dict[str, Any] = {} # "Customer": HeuristicsNet
 
     def update(self, object_type: str, dfg_model: Any):
         self._dfgs[object_type] = dfg_model
@@ -65,14 +67,15 @@ class DFGRepository:
     def all(self) -> Dict[str, Any]:
         return dict(self._dfgs)
 
-class RelationRepository:
-    """Holds the latest object relations."""
+class AERDiagramRepository:
+    """Holds the latest Activity Entity Relation Diagram."""
     def __init__(self):
-        self._relations: Dict[str, Any] = {}
+        self._relations: ActivityERDiagram = ActivityERDiagram()
 
     def update(self, relation_model: Any):
         self._relations = relation_model
 
-    def all(self) -> Dict[str, Any]:
-        return dict(self._relations)
+    def get(self) -> ActivityERDiagram:
+        return self._relations
+
 

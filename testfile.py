@@ -34,7 +34,7 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,100),(test_events_phaseflow, 100)], shuffle=False)
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,50),(test_events_phaseflow, 250)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
@@ -64,35 +64,35 @@ emitted_ocdfgs = []
 def get_relations(x):
     global emitted_relations
     global emitted_ocdfgs
-    if x.get("relations") is not None:
-        return emitted_relations.append(x["relations"])
+    if x.get("aer_diagram") is not None:
+        emitted_relations.append(x["aer_diagram"])
     if x.get("ocdfg") is not None:
-        return emitted_ocdfgs.append(x["ocdfg"])
+        emitted_ocdfgs.append(x["ocdfg"])
 
 
 combined_log.pipe(
-    oc_operator(control_flow=control_flow,track_relations=True),
-    ops.do_action(lambda x: print(f"Emitting: {x}")),
-    #oc_merge_operator(),
-    #ops.do_action(print)
+    oc_operator(control_flow,track_relations=True),
+    #ops.do_action(lambda x: print(f"Emitting: {x}")),
+    oc_merge_operator(),
+    ops.do_action(print)
 ).subscribe(on_next=lambda x: get_relations(x))
 
 
 
-""""
+
 print(f"Length of emitted: {len(emitted_relations)}")
 for i, m in enumerate(emitted_relations):
-    if i% 2000 == 0:
-        visualizer.save_relation(m)
+    if i% 50 == 0:
+        visualizer.save_aer_diagram(m)
 
 visualizer.generate_relation_gif()
 
 for i, m in enumerate(emitted_ocdfgs):
-    if i% 200 == 0:
+    if i% 50 == 0:
         visualizer.save(m)
 
 visualizer.generate_ocdfg_gif()
-"""
+
 #for i, m in enumerate(emitted):
 #    print(m["relation"])
 

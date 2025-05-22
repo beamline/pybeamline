@@ -59,3 +59,7 @@ class OCDFG:
             print(f"Start activities for {obj_type}: {self.start_activities.get(obj_type, set())}")
             print(f"End activities for {obj_type}: {self.end_activities.get(obj_type, set())}")
         return "\n".join(lines)
+
+    def __repr__(self):
+        return repr(self.__dict__)
+

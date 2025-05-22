@@ -44,6 +44,7 @@ class OCOperator:
         self.__track_relations: bool = track_relations
         self.__miner_subjects: Dict[str, Subject[BOEvent]] = {}
         self.__output_subject: Subject = Subject()
+        self.active_objects: set[str] = set()
 
         # Pre-register the relation stream if tracking is enabled
         if self.__track_relations:
@@ -62,7 +63,11 @@ class OCOperator:
         self.__miner_subjects[obj_type] = subject
 
         # Choose appropriate pipeline
-        stream_op = _relation_stream(miner_op) if obj_type=="relation" else _basic_stream(obj_type, miner_op)
+        if obj_type != "relation":
+            self.active_objects.add(obj_type)
+            stream_op = self._basic_stream(obj_type, miner_op)
+        else:
+            stream_op = self._relation_stream(miner_op)
 
         # Subscribe pipeline to subject and forward results
         subject.pipe(
@@ -100,14 +105,14 @@ class OCOperator:
         )
         return routing.pipe(ops.merge(self.__output_subject))
 
-    def _deregister_stream(self, obj_type: str):
-        """
-        Deregisters a stream for a given object type.
-        :param obj_type: The object type to deregister.
-        """
-        if obj_type in self.__miner_subjects:
-            self.__miner_subjects[obj_type].on_completed()
-            del self.__miner_subjects[obj_type]
+    def _deregister_stream(self, obj_types_alive: set[str]):
+        inactive_objects = self.active_objects - obj_types_alive
+        for obj_type in inactive_objects:
+            print(f"Deregistering {obj_type}...")
+            if obj_type in self.__miner_subjects:
+                self.__miner_subjects[obj_type].on_completed()
+                del self.__miner_subjects[obj_type]
+                self.active_objects.remove(obj_type)
 
 
     def get_mode(self) -> bool:
@@ -116,19 +121,20 @@ class OCOperator:
     def get_control_flow(self) -> Dict[str, StreamMiner]:
         return self.__control_flow
 
-# Basic mining pipeline per object type
-def _basic_stream(obj_type: str, miner: StreamMiner) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
-    return lambda src: src.pipe(
-        miner,
-        ops.filter(lambda model: bool(getattr(model, "dfg", {}))),
-        ops.map(lambda model: {"object_type": obj_type, "model": model})
-    )
+    # Basic mining pipeline per object type
+    def _basic_stream(self, obj_type: str, miner: StreamMiner) -> Callable:
+        return lambda src: src.pipe(
+            miner,
+            ops.filter(lambda model: bool(getattr(model, "dfg", {}))),
+            ops.map(lambda model: {"object_type": obj_type, "model": model})
+        )
 
-# Extended pipeline with object-relations included
-def _relation_stream(miner: StreamMiner) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
-    return lambda src: src.pipe(
-        miner,
-        ops.map(lambda model: {
-            "relation": model,
-        })
-    )
+    # Extended pipeline with object-relations included
+    def _relation_stream(self, miner: StreamMiner) -> Callable:
+        return lambda src: src.pipe(
+            miner,
+            ops.do_action(lambda model:self._deregister_stream(model["live_objects"])),
+            ops.map(lambda model: {
+                "aer_diagram": model["aer_diagram"],
+            })
+        )

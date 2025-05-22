@@ -3,7 +3,8 @@ from PIL import Image
 from graphviz import Digraph, Graph
 import random
 from graphviz import Graph
-from pybeamline.objects.object_relation_model import ObjectRelationModel
+
+from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
 
 class Visualizer:
@@ -62,42 +63,55 @@ class Visualizer:
         self.snapshots_ocdfg.append(ocdfg_path)
         self.counter += 1
 
-    def draw_relation(self, model: ObjectRelationModel, max_activities_per_column=5) -> Graph:
+    def draw_relation(self, model: ActivityERDiagram, max_activities_per_column=5) -> Graph:
         dot = Graph(name="ObjectCentricRelations", format="png")
-        dot.attr(compound="true")
-        dot.attr(fontsize="14")
+        dot.attr(compound="true", fontsize="14")
 
         col_idx = 0
         act_count = 0
 
-        for i, activity in enumerate(model.activities):
+        # iterate activities in insertion order
+        for idx, (activity_name, edges) in enumerate(model.relations.items()):
+            # wrap to next column?
             if act_count >= max_activities_per_column:
                 col_idx += 1
                 act_count = 0
             act_count += 1
 
-            with dot.subgraph(name=f"cluster_col_{col_idx}_{i}") as sub:
-                sub.attr(label=activity.activity)
-                sub.attr(style="dashed")
-                sub.attr(rank="same")
-                sub.attr(fontsize="16")
+            # cluster per activity
+            with dot.subgraph(name=f"cluster_col_{col_idx}_{idx}") as sub:
+                sub.attr(
+                    label=activity_name,
+                    style="dashed",
+                    rank="same",
+                    fontsize="16"
+                )
 
-                for obj_type in activity.object_types:
-                    node_id = f"{activity.activity}_{obj_type}"
-                    sub.node(node_id, label=obj_type, shape="ellipse")
+                # collect all entity types in this activity
+                obj_types = {t for (s, t) in edges.keys()} | {s for (s, t) in edges.keys()}
 
-                for edge in activity.edges:
-                    src_id = f"{activity.activity}_{edge.source}"
-                    tgt_id = f"{activity.activity}_{edge.target}"
-                    sub.edge(src_id, tgt_id, label=edge.cardinality.value, fontname="Courier", fontsize="20")
+                # draw each node
+                for obj in sorted(obj_types):
+                    node_id = f"{activity_name}__{obj}"
+                    sub.node(node_id, label=obj, shape="ellipse")
 
-        # Improve layout for left-to-right columns
-        dot.attr(rankdir="LR")
-        dot.attr(nodesep="1.0", ranksep="1.0")
+                # draw each edge with its cardinality label
+                for (src, tgt), card in edges.items():
+                    src_id = f"{activity_name}__{src}"
+                    tgt_id = f"{activity_name}__{tgt}"
+                    sub.edge(
+                        src_id,
+                        tgt_id,
+                        label=card.value,
+                        fontname="Courier",
+                        fontsize="20"
+                    )
 
+        # overall left-to-right layout
+        dot.attr(rankdir="LR", nodesep="1.0", ranksep="1.0")
         return dot
 
-    def save_relation(self, relation_model: ObjectRelationModel):
+    def save_aer_diagram(self, relation_model: ActivityERDiagram):
         relation_dot = self.draw_relation(relation_model)
         relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
 
