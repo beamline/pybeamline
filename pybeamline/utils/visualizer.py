@@ -16,6 +16,14 @@ class Visualizer:
         self.current_index = 0
         self.snapshot_dir = os.path.join(os.getcwd(), "snapshots")
 
+        if not os.path.exists(self.snapshot_dir):
+            os.makedirs(self.snapshot_dir)
+
+        # Clear previous snapshots
+        for file in os.listdir(self.snapshot_dir):
+            if file.endswith(".png"):
+                os.remove(os.path.join(self.snapshot_dir, file))
+
     def _get_color(self, obj_type: str):
         if obj_type not in self.object_type_colors:
             color = "#{:06x}".format(random.randint(0, 0xFFFFFF))

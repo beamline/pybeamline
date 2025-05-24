@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Dict, Tuple, Set, Any
 
 @dataclass
@@ -35,20 +36,26 @@ class OCDFG:
         relationships grouped by object type, rather than directly constructing
         event-object-projected graphs in an Object-Centric Event Log (OCEL).
         """
-    def __init__(self):
-        self.activities: Set[str] = set()
-        self.object_types: Set[str] = set()
-        self.edges: Dict[str, Dict[Tuple[str,str], int]] = {} # "Customer": (activity1, activity2): frequency
-        self.start_activities: Dict[str, Set[str]] = {} # "Customer": {"Create Customer Order"}
-        self.end_activities: Dict[str, Set[str]] = {}   # "Customer": {"Receive Invoice"}}
+
+    activities: Set[str] = field(default_factory=set)
+    object_types: Set[str] = field(default_factory=set)
+
+    edges: Dict[str, Dict[Tuple[str,str], int]] = field(
+    default_factory=lambda: defaultdict(dict)
+    )
+    start_activities: Dict[str, Set[str]] = field(
+    default_factory=lambda: defaultdict(set)
+    )
+    end_activities: Dict[str, Set[str]] = field(
+    default_factory=lambda: defaultdict(set)
+    )
 
     def add_edge(self, source: str, object_type: str, target: str, frequency: int):
+        # Record the activity and object type
         self.activities.update([source, target])
         self.object_types.add(object_type)
 
-        if object_type not in self.edges:
-            self.edges[object_type] = {}
-
+        # Update the edge frequency
         self.edges[object_type][(source, target)] = frequency
 
     def __str__(self):
@@ -61,5 +68,11 @@ class OCDFG:
         return "\n".join(lines)
 
     def __repr__(self):
-        return repr(self.__dict__)
+        return (
+            f"OCDFG(activities={sorted(self.activities)}, "
+            f"object_types={sorted(self.object_types)}, "
+            f"edges={dict(self.edges)}, "
+            f"start_activities={dict(self.start_activities)}, "
+            f"end_activities={dict(self.end_activities)})"
+        )
 

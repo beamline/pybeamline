@@ -5,11 +5,14 @@ from IPython.core.display_functions import display
 from graphviz import render
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
+from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
+from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
 
 test_events_phaseflow = [
     {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
@@ -23,8 +26,23 @@ test_events_phaseflow = [
 ]
 
 test_only_order = [
-    {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
+    {"activity": "Register Customer", "objects": {"Obj1": ["obj1"]}},
     {"activity": "Create Order", "objects": {"Customer": ["c1"], "Order": ["o1"]}}]
+
+
+test = [
+    {"activity": "Register Guest", "objects": {"Guest": ["g1"]}},
+    {"activity": "Create Booking", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+    {"activity": "Reserve Room", "objects": {"Room": ["r1"], "Booking": ["b1"]}},
+    {"activity": "Check In", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+    {"activity": "Check Out", "objects": {"Guest": ["g1"], "Booking": ["b1"]}}
+]
+
+test_receptonist= [
+    {"activity": "Greet Guest", "objects": {"Guest": ["g2"]}, "Receptionist": ["r1"]},
+    {"activity": "No Booking", "objects": {"Guest": ["g2"], "Receptionist": ["r1"]}},
+    {"activity": "Make Bed", "objects": {"Room": ["r2"], "Receptionist": ["h1"]}},
+]
 
 test_events_phaseflow_ends_early = [
     {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
@@ -34,20 +52,23 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,50),(test_only_order, 30000)], shuffle=False)
+combined_log = dict_test_ocel_source([(test,400), (test_receptonist,100),(test_events_phaseflow, 1400)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
 
 control_flow = {
-    "Order": heuristics_miner_lossy_counting(model_update_frequency=20, max_approx_error=0.1),
-    "Item": heuristics_miner_lossy_counting(model_update_frequency=20),
-    "Customer": heuristics_miner_lossy_counting(model_update_frequency=20, max_approx_error=0.1),
-    "Shipment": heuristics_miner_lossy_counting(model_update_frequency=20),
-    "Invoice": heuristics_miner_lossy_counting(model_update_frequency=20),
+    "Receptionist": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
+    "Guest": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
+    "Booking": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
+    "Room": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
+    "Order": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    "Item": heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Customer": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    "Shipment": heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Invoice": heuristics_miner_lossy_counting(model_update_frequency=10),
 }
-
 
 visualizer = Visualizer()
 
@@ -61,25 +82,41 @@ from reactivex import operators as ops
 # pipe the combined log to the OCOperator op
 emitted_relations = []
 emitted_ocdfgs = []
-def get_relations(x):
-    global emitted_relations
-    global emitted_ocdfgs
-    if x.get("aer_diagram") is not None:
-        emitted_relations.append(x["aer_diagram"])
-    if x.get("ocdfg") is not None:
-        emitted_ocdfgs.append(x["ocdfg"])
+def append_ocdfg(m):
+    """
+    Callback to append emitted OCDFGs to the list.
+    """
+    emitted_ocdfgs.append(m)
+
+def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
+    """
+    Heuristic to determine if the topology of the new OCDFG is significantly different from the old one.
+    This can be used to decide whether to update the heuristic net or not.
+    """
+    # Example heuristic: if the number of nodes changes significantly, return True
+    def significant_edge_change(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
+        """
+        Check if the number of edges has changed significantly.
+        """
+        return abs(len(ocdfg_new.edges) - len(ocdfg_old.edges)) > 0
+
+
+    return abs(len(ocdfg_new.object_types) - len(ocdfg_old.object_types)) > 0 or \
+            abs(len(ocdfg_new.activities) - len(ocdfg_old.activities)) > 0 or \
+            significant_edge_change(ocdfg_old, ocdfg_new)
 
 
 combined_log.pipe(
-    oc_operator(control_flow,track_relations=True),
-    #ops.do_action(lambda x: print(f"Emitting: {x}")),
-    #oc_merge_operator(),
+    oc_dfg_operator(control_flow,object_max_approx_error=0.2), # Math.ceil(0.18 * 100)= 18
     #ops.do_action(print)
-).subscribe(on_next=lambda x: get_relations(x))
+
+).subscribe()
+
+print(len(emitted_ocdfgs))
 
 
 
-
+"""
 print(f"Length of emitted: {len(emitted_relations)}")
 for i, m in enumerate(emitted_relations):
     if i% 50 == 0:
@@ -88,11 +125,11 @@ for i, m in enumerate(emitted_relations):
 visualizer.generate_relation_gif()
 
 for i, m in enumerate(emitted_ocdfgs):
-    if i% 50 == 0:
+    if i%1 == 0:
         visualizer.save(m)
 
 visualizer.generate_ocdfg_gif()
-
+"""
 #for i, m in enumerate(emitted):
 #    print(m["relation"])
 

@@ -79,7 +79,7 @@ class OCDFGOperator:
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
-        miner_op = miner or heuristics_miner_lossy_counting(50)
+        miner_op = miner or heuristics_miner_lossy_counting(20)
 
         # Build per-type model stream
         dfg_stream = subject.pipe(
@@ -125,6 +125,7 @@ class OCDFGOperator:
 
         # Cleanup low-activity object streams at bucket boundary
         if self.__observed_events % self.__bucket_width == 0:
+            #print(f"Cleanup at bucket {current_bucket} with {len(self.__obj_tracking)} tracked objects")
             self._cleanup(current_bucket)
 
     def _miner_stream(self, stream: Observable[BOEvent]) -> Observable[Dict[str, Any]]:
