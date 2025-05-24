@@ -18,20 +18,21 @@ def _infer_cardinality(count1: int, count2: int) -> Cardinality:
     else:
         return Cardinality.MANY_TO_MANY
 
-def object_relations_miner_lossy_counting(model_update_frequency=100, max_approx_error: float = 0.0001) -> Callable[
+def object_relations_miner_lossy_counting(model_update_frequency=100, max_approx_error: float = 0.0001, dynamic_mode: bool = True) -> Callable[
     [Observable[BOEvent]], Observable[Dict[str, Any]]]:
     """
     Object Relationship Miner using a lossy counting approach.
+    :param dynamic_mode:
     :param model_update_frequency: Frequency of model updates
     :param max_approx_error: Maximum approximation error for the lossy counting on objects
     :return: Function to process BOEvent and return a dictionary with the model
     """
-    obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error)
+    obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, dynamic_mode=dynamic_mode)
 
     def miner(event: BOEvent) -> Observable[Dict[str, Any]]:
         if isinstance(event, BOEvent):
             obj_rel.ingest_event(event)
-            if obj_rel.observed_events % model_update_frequency == 0:
+            if obj_rel.observed_events() % model_update_frequency == 0:
                 return just(obj_rel.get_model())
         return empty()
 
@@ -39,18 +40,18 @@ def object_relations_miner_lossy_counting(model_update_frequency=100, max_approx
 
 
 class ObjectRelationMinerLossyCounting:
-    def __init__(self, max_approx_error: float = 0.001):
+    def __init__(self, max_approx_error: float = 0.001, dynamic_mode: bool = True):
+        self.__dynamic_mode = True  # Dynamic mode by default
         self.__activity_object_relations: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, int]]] = {}
         self.__activity_object_presence: Dict[str, Set[str]] = {}
 
         self.__object_type_tracking: Dict[str, Tuple[int, int]] = {} # obj_type → (frequency, last_bucket)
 
-        self.observed_events = 1
-        self.bucket_width = int(1 / max_approx_error)
+        self.__observed_events = 1
+        self.__bucket_width = int(1 / max_approx_error)
 
     def ingest_event(self, event: BOEvent):
-        #print(f"[ObjectRelationMiner] Ingesting event: {event}")
-        current_bucket = int(self.observed_events / self.bucket_width)
+        current_bucket = int(self.__observed_events / self.__bucket_width)
         activity = event.get_event_name()
         omap = event.get_omap()
         types = list(omap.keys())
@@ -84,17 +85,17 @@ class ObjectRelationMinerLossyCounting:
                 self.__activity_object_relations[activity][key][cardinality] += 1
 
         # Bucket cleaning time
-        if self.observed_events % self.bucket_width == 0:
-            self._cleanup(self.observed_events)
+        if self.__observed_events % self.__bucket_width == 0 and self.__dynamic_mode:
+            self._cleanup(self.__observed_events)
 
-        self.observed_events += 1
+        self.__observed_events += 1
 
     def _cleanup(self, current_bucket: int):
         stale_types = [obj for obj, (freq, bucket) in self.__object_type_tracking.items()
                        if freq + bucket <= current_bucket]
 
-        #if stale_types:
-            #print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
+        if stale_types:
+            print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
 
         for obj_type in stale_types:
             del self.__object_type_tracking[obj_type]
@@ -107,20 +108,13 @@ class ObjectRelationMinerLossyCounting:
                 keys_to_remove = [k for k in rels if obj_type in k]
                 for k in keys_to_remove:
                     del rels[k]
-                    #print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
+                    print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
 
     def get_model(self):
-        """
-        Returns:
-          - ActivityERDiagram: the per-activity ER diagrams so far
-          - Set[str]:        the set of currently ‘live’ object types
-        """
         live_objects = set(self.__object_type_tracking.keys())
-
-        # 2) Create an empty diagram
         diagram = ActivityERDiagram()
 
-        # 3) For each activity, for each (type1,type2) pair, infer the cardinality
+        # For each activity, for each (type1,type2) pair, infer the cardinality
         for activity, pairs in self.__activity_object_relations.items():
             for (t1, t2), counts in pairs.items():
                 most_common = max(counts.items(), key=lambda kv: kv[1])[0]  # Cardinality enum
@@ -129,6 +123,8 @@ class ObjectRelationMinerLossyCounting:
         return {"aer_diagram": diagram,
                 "live_objects": live_objects}
 
+    def observed_events(self) -> int:
+        return self.__observed_events
 
     def __str__(self):
         lines = ["Activity-Object Type Relations:"]

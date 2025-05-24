@@ -51,14 +51,18 @@ class OCOperator:
         # keep track of each subject’s subscription
         self.__subscriptions: Dict[str, Disposable] = {}
 
-        # Pre-register the relation stream if tracking is enabled
-        if self.__track_relations:
-            self._register_stream("relation", miner=object_relations_miner_lossy_counting())
 
         # Pre-register static streams if not in dynamic mode
         if not self.__dynamic_mode:
             for obj_type, miner in self.__control_flow.items():
                 self._register_stream(obj_type, miner)
+
+        # Pre-register the relation stream if tracking is enabled
+        if self.__track_relations:
+            if self.__dynamic_mode:
+                self._register_stream("relation", miner=object_relations_miner_lossy_counting()),
+            else:
+                self._register_stream("relation", miner=object_relations_miner_lossy_counting(dynamic_mode=self.__dynamic_mode))
 
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
@@ -66,12 +70,15 @@ class OCOperator:
         self.__miner_subjects[obj_type] = subject
         miner_op = miner or heuristics_miner_lossy_counting(50)
 
+        print(f"Started stream for object type '{obj_type}' with miner {miner_op}")
         if obj_type == "relation":
             # If the object type is "relation", we use the relation miner
-            stream_op = self._relation_stream(miner)
+            stream_op = self._relation_stream(miner_op)
         else:
+            print(f"Adding stream for object type '{obj_type}' with miner {miner_op}")
             self.active_objects.add(obj_type)
-            stream_op = self._basic_stream(obj_type, miner)
+            stream_op = self._basic_stream(obj_type, miner_op)
+
 
         subscription = subject.pipe(stream_op).subscribe(
             on_next=self.__output_subject.on_next,
@@ -89,7 +96,8 @@ class OCOperator:
         for flattened_event in event.flatten():
             obj_type = flattened_event.get_omap_types()[0]  # Assuming single object type per event
             if obj_type not in self.__miner_subjects:
-                if self.__dynamic_mode:
+                print(" → need to register", obj_type)
+                if self.__dynamic_mode or obj_type in self.__control_flow:
                     self._register_stream(obj_type)
                 else:
                     continue
@@ -110,15 +118,15 @@ class OCOperator:
         return routing.pipe(ops.merge(self.__output_subject))
 
     def _deregister_stream(self, obj_types_alive: set[str]):
-        print(f"Active objects: {self.active_objects}")
-        print(f"Alive objects: {obj_types_alive}")
+        print(f"Active objects OC Streams: {self.active_objects}")
+        print(f"Alive objects AER: {obj_types_alive}")
         inactive = self.active_objects - obj_types_alive
         for obj_type in inactive:
-            print(f"Deregistering {obj_type}…")
-
             # 1) complete the subject so it flushes everything it already
             #    has and then stops (but won't close the merged output)
+            print(f"Miner subjects: {self.__miner_subjects.keys()}")
             subj = self.__miner_subjects.pop(obj_type, None)
+            print(f"Miner subjects after: {self.__miner_subjects.keys()}")
             if subj:
                 subj.on_completed()
 
@@ -151,7 +159,7 @@ class OCOperator:
         return lambda src: src.pipe(
             miner,
             #ops.do_action(print),
-            ops.do_action(lambda model:self._deregister_stream(model["live_objects"])),
+            ops.do_action(lambda model:self._deregister_stream(model["live_objects"]) if self.__dynamic_mode else None),
             ops.map(lambda model: {
                 "aer_diagram": model["aer_diagram"],
             })
