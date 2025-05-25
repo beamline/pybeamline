@@ -38,6 +38,9 @@ log = ocel_log_source_from_file("tests/logistics.jsonocel")
 
 # Set based
 def jaccard_similarity(model: set, ref_model: set) -> float:
+    intersection = model.intersection(ref_model)
+    if intersection is not None:
+        print(f"The missing edges in the model: {ref_model - intersection}")
     intersection = len(model.intersection(ref_model))
     union = len(model.union(ref_model))
 
