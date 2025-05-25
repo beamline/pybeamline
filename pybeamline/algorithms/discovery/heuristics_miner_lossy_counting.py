@@ -1,12 +1,12 @@
 import math
 from pm4py.algo.discovery.heuristics.variants.classic import calculate as compute_dfg
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import just, empty, throw
+from reactivex import just, empty, throw, from_iterable, Observable
 from reactivex import operators as ops
 from reactivex import Observable
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
-from typing import Callable
+from typing import Callable, Union
 from pybeamline.boevent import BOEvent
 
 
@@ -14,13 +14,17 @@ def heuristics_miner_lossy_counting(
         model_update_frequency=10,
         max_approx_error=0.001,
         dependency_threshold=0.5,
-        and_threshold=0.8) -> Callable[[Observable], Observable[HeuristicsNet]]:
+        and_threshold=0.8) -> Callable[[Observable[AbstractEvent | dict]], Observable[dict]]:
     hm = HeuristicsMinerLossyCounting(
         max_approx_error=max_approx_error,
         dependency_threshold=dependency_threshold,
         and_threshold=and_threshold)
 
-    def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
+
+    def miner(event: Union[AbstractEvent, dict]) -> Observable[dict]:
+        if isinstance(event, dict) and event.get("signal") == "terminate":
+            return just({"type": "deregister", "object_type": event.get("object_type")})
+
         if isinstance(event, BOEvent):
             # Verify that the event is flattened
             if len(event.get_object_ids()) != 1:
@@ -41,7 +45,16 @@ def heuristics_miner_lossy_counting(
             raise TypeError(f"Unsupported event type: {type(event)}")
 
         if hm.observed_events() % model_update_frequency == 0:
-            return just(hm.get_model())
+            if event is isinstance(event, BEvent):
+                return just(hm.get_model())
+            else:
+                model = hm.get_model()
+                if model and model.dfg:
+                    return just({
+                        "type": "model",
+                        "object_type": event.get_omap_types()[0],
+                        "model": hm.get_model(),
+                    })
         return empty()
 
     return ops.flat_map(miner)

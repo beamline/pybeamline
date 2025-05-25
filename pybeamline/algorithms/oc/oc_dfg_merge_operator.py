@@ -20,7 +20,7 @@ def oc_dfg_merge_operator(update_heuristic_func: Callable[[Optional[OCDFG], OCDF
         return stream.pipe(
             ops.map(manager.process),
             ops.filter(lambda x: x is not None),
-            ops.do_action(lambda o: print(repr(o)))
+            ops.filter(lambda g: g is not None and bool(g.edges)),
         )
     return operator
 
@@ -41,43 +41,35 @@ class OCDFGManager:
 
     def process(self, msg: Dict[str, Any]) -> OCDFG | None:
         """
-        Handle a single incoming update or deregistration message, then
-        rebuild and return the merged OCDFG.
+                Handle an incoming message:
+                - {"type": "model", "object_type": ..., "model": ...}
+                - {"type": "deregister", "object_type": ...}
+                """
+        msg_type = msg.get("type")
+        obj_type = msg.get("object_type")
 
-        Args:
-            msg (Dict[str, Any]):
-                Expected keys:
-                    - 'object_type' (str)
-                    - 'model' (HeuristicsNet)
-                    or
-                    - 'deregister' (str) object type to remove
+        if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
+            self._obj_dfg_repo[obj_type] = msg["model"]
 
-        Returns:
-            OCDFG: the newly rebuilt object-centric DFG.
-        """
-        #print(f"Processing message: {msg}")
-        # If new model is provided, update the repository
-        if msg.get("object_type") is not None and msg.get("dfg") is not None:
-            self._obj_dfg_repo[msg["object_type"]] = msg["dfg"]
+        elif msg_type == "deregister" and obj_type:
+            print(f"[OCDFG] Deregistering object type: {obj_type}")
+            self._obj_dfg_repo.pop(obj_type, None)
 
-        # If deregistration is requested, remove the object type
-        if msg.get("deregister") is not None:
-            print(f"Deregistering object type: {msg['deregister']}")
-            # Deregister the object type if specified
-            obj_type = msg["deregister"]
-            if obj_type in self._obj_dfg_repo:
-                del self._obj_dfg_repo[obj_type]
+        else:
+            # Skip unknown or malformed messages
+            return None
 
         ocdfg = self._build_ocdfg()
 
         if self._update_heuristic is None:
-            # If no heuristic is provided, always emit the new OCDFG
             self._last_emit = ocdfg
             return ocdfg
 
-        if self._last_emit is None or (self._update_heuristic is not None and self._update_heuristic(self._last_emit, ocdfg)):
+        if self._last_emit is None or self._update_heuristic(self._last_emit, ocdfg):
             self._last_emit = ocdfg
             return ocdfg
+
+        return None
 
     def _build_ocdfg(self) -> OCDFG:
         """
