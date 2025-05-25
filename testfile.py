@@ -33,7 +33,7 @@ test_only_order = [
 test = [
     {"activity": "Register Guest", "objects": {"Guest": ["g1"]}},
     {"activity": "Create Booking", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
-    {"activity": "Reserve Room", "objects": {"Room": ["r1"], "Booking": ["b1"]}},
+    {"activity": "Reserve Room", "objects": {"Booking": ["b1"]}},
     {"activity": "Check In", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
     {"activity": "Check Out", "objects": {"Guest": ["g1"], "Booking": ["b1"]}}
 ]
@@ -52,7 +52,7 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test,400), (test_receptonist,100),(test_events_phaseflow, 1400)], shuffle=False)
+combined_log = dict_test_ocel_source([(test,100), (test_events_phaseflow, 600)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
@@ -62,9 +62,8 @@ control_flow = {
     "Receptionist": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
     "Guest": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
     "Booking": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
-    "Room": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
     "Order": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Item": heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Item": heuristics_miner_lossy_counting(model_update_frequency=5),
     "Customer": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
     "Shipment": heuristics_miner_lossy_counting(model_update_frequency=10),
     "Invoice": heuristics_miner_lossy_counting(model_update_frequency=10),
@@ -107,12 +106,12 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_dfg_operator(control_flow,object_max_approx_error=0.2), # Math.ceil(0.18 * 100)= 18
-    #ops.do_action(print)
+    oc_dfg_operator(control_flow,object_max_approx_error=0.1), # the bucket width is 1/0.9 = 10
+    ops.do_action(print)
+    #ops.do_action(lambda m: print(m) if m.get("deregister") is not None else None),
+    #oc_dfg_merge_operator()
+).subscribe(lambda msg: append_ocdfg(msg))
 
-).subscribe()
-
-print(len(emitted_ocdfgs))
 
 
 
@@ -124,11 +123,14 @@ for i, m in enumerate(emitted_relations):
 
 visualizer.generate_relation_gif()
 
-for i, m in enumerate(emitted_ocdfgs):
-    if i%1 == 0:
-        visualizer.save(m)
 
-visualizer.generate_ocdfg_gif()
+counter = 0
+for i, m in enumerate(emitted_ocdfgs):
+    if i%25 == 0 or counter < 10:
+        visualizer.save(m)
+        counter += 1
+
+visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
 """
 #for i, m in enumerate(emitted):
 #    print(m["relation"])

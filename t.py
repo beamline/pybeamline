@@ -1,0 +1,122 @@
+from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
+from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
+from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
+from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
+from pybeamline.utils.visualizer import Visualizer
+
+booking_flow = [
+    {"activity": "Register Guest", "objects": {"Guest": ["g1"]}},
+    {"activity": "Create Booking", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+    {"activity": "Reserve Room", "objects": {"Room": ["r1"], "Booking": ["b1"]}},
+    {"activity": "Check In", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+    {"activity": "Check Out", "objects": {"Guest": ["g1"], "Booking": ["b1"]}}
+]
+
+test_customers = [
+    {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
+    {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
+    {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
+    {"activity": "Reserve Item", "objects": {"Item": ["i2"]}},
+    {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
+]
+
+source = dict_test_ocel_source([(booking_flow, 100), (test_customers, 3000)], shuffle=False)
+
+booking_flow_set = {
+    ("Register Guest", "Guest", "Create Booking"),
+    ("Create Booking", "Guest", "Check In"),
+    ("Create Booking", "Booking", "Reserve Room"),
+    ("Reserve Room", "Booking", "Check In"),
+    ("Check In", "Guest", "Check Out"),
+    ("Check In", "Booking", "Check Out")
+}
+
+test_customers_set = {
+    ("Register Customer", "Customer", "Create Order"),
+    ("Create Order", "Customer", "Cancel Order"),
+    ("Create Order", "Order", "Add Item"),
+    ("Add Item", "Order", "Reserve Item"),
+    ("Add Item", "Item", "Reserve Item"),
+}
+
+
+
+# Set based
+def jaccard_similarity(model: set, ref_model: set) -> float:
+    intersection = len(model.intersection(ref_model))
+    union = len(model.union(ref_model))
+
+    if union == 0:
+        return 0.0  # Avoid division by zero
+
+    return intersection / union
+
+emitted_ocdfgs = []
+def append_ocdfg(ocdfg: OCDFG):
+    global emitted_ocdfgs
+    emitted_ocdfgs.append(ocdfg)
+
+
+source.pipe(
+    oc_dfg_operator(object_max_approx_error=0.05),
+    oc_dfg_merge_operator()
+).subscribe(append_ocdfg)
+
+
+# Conform the emitted OCDFGs to the set notation of edges
+def conform_emit_ocdfg(ocdfg: OCDFG) -> set[tuple[str, str, str]]:
+    """
+    Convert OCDFG to a set of edges in the format (source, object_type, target).
+    """
+    result = set()
+    for obj_type, transitions in ocdfg.edges.items():
+        for (src, tgt), freq in transitions.items():
+            result.add((src, obj_type, tgt))
+    return result
+
+emitted_ocdfgs_edge_set = [ conform_emit_ocdfg(ocdfg) for ocdfg in emitted_ocdfgs]
+
+print(f"Last emitted OCDFG: {emitted_ocdfgs[-1]}")
+visualizer = Visualizer()
+
+visualizer.save(emitted_ocdfgs[-1])
+
+booking_similarities = []
+customer_similarities = []
+
+for ocdfg_edge_set in emitted_ocdfgs_edge_set:
+    booking_sim = jaccard_similarity(ocdfg_edge_set, booking_flow_set)
+    customer_sim = jaccard_similarity(ocdfg_edge_set, test_customers_set)
+    booking_similarities.append(booking_sim)
+    customer_similarities.append(customer_sim)
+
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+# Build long-format dataframe
+df = pd.DataFrame({
+    "Snapshot": range(1, len(emitted_ocdfgs_edge_set) + 1),
+    "Booking Flow": booking_similarities,
+    "Customer Flow": customer_similarities
+})
+
+df_melted = df.melt(id_vars="Snapshot",
+                    value_vars=["Booking Flow", "Customer Flow"],
+                    var_name="Reference",
+                    value_name="Jaccard Similarity")
+
+
+
+
+# Plot
+plt.figure(figsize=(10, 4))
+sns.lineplot(data=df_melted, x="Snapshot", y="Jaccard Similarity", hue="Reference", marker="o")
+plt.title("Jaccard Similarity of Emitted OCDFGs vs. Reference Flows")
+plt.xlabel("OCDFG Snapshot Index")
+plt.ylabel("Jaccard Similarity")
+plt.grid(True)
+plt.tight_layout()
+plt.show()

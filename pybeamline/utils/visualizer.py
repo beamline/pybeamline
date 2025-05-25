@@ -127,7 +127,7 @@ class Visualizer:
         self.snapshots_relation.append(relation_path)
         self.counter += 1
 
-    def generate_ocdfg_gif(self, out_file="ocdfg_evolution.gif", duration=1500):
+    def generate_ocdfg_gif(self, out_file="ocdfg_evolution.gif", duration=1000):
         if not self.snapshots_ocdfg:
             print("No OCDFG snapshots to include in GIF.")
             return
