@@ -1,9 +1,3 @@
-from threading import Event
-from typing import List, Dict, Any
-
-from IPython.core.display_functions import display
-from graphviz import render
-
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
 from pybeamline.algorithms.oc.oc_operator import oc_operator
