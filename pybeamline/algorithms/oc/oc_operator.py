@@ -1,166 +1,103 @@
-from typing import Dict, Optional, Protocol, Callable, Any
-
-from httpcore import stream
+import math
+from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import operators as ops, Observable, from_iterable
-from reactivex.disposable import Disposable
+from reactivex import operators as ops, Observable, merge, empty, just
+from reactivex.abc import DisposableBase
 from reactivex.subject import Subject
-from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
+
+from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy_counting_operator
 from pybeamline.boevent import BOEvent
-from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import \
-    object_relations_miner_lossy_counting
+from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
-# Protocol defining how a miner should behave: transforms BOEvent stream → HeuristicsNet stream
+# Protocol defining how a miner should behave: transforms BOEvent stream → messages (dicts)
 class StreamMiner(Protocol):
-    def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
-        ...  # pragma: no cover
+    def __call__(self, stream: Observable[BOEvent]) -> Observable[HeuristicsNet]:
+        ...
 
-# Factory function that return stream operator
-def oc_operator(control_flow: Optional[Dict[str, StreamMiner]] = None, track_relations: bool = False) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
-    """
-    Creates an object-centric operator for processing streams of BOEvents.
-    Reactive operator that routes incoming events to the appropriate miner
-    based on the object type. If a miner is not registered for an object type,
-    it will be auto-registered.
 
-    :param track_relations: (bool): Whether to track object relations withing activities.
-    :param control_flow: (Optional[Dict[str, Callable]]):
-    A mapping from object type names to their mining operators.
-    If None, dynamic discovery will be enabled and default miners used.
-
-    :return:
-    Callable: A streaming operator that takes a stream of events and outputs discovered object specific DFG updates or object relations.
-    """
+def oc_operator(
+    control_flow: Optional[Dict[str, StreamMiner]] = None,
+    object_max_approx_error: float = 0.0001
+) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     if control_flow is not None and not isinstance(control_flow, dict):
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
     for obj_type, miner in (control_flow or {}).items():
         if not callable(miner):
-            raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
+            raise ValueError(f"control_flow values must be callables, got {type(miner).__name__} for '{obj_type}'")
 
-    # Returns a callable operator for an Observable[BOEvent]
-    return OCOperator(control_flow=control_flow or {}, track_relations=track_relations).op()
+    return OCOperator(
+        control_flow=control_flow or {},
+        object_max_approx_error=object_max_approx_error
+    ).operator
+
 
 class OCOperator:
-    def __init__(self, control_flow: Dict[str, StreamMiner], track_relations: bool = False):
-        self.__control_flow: Dict[str, StreamMiner] = control_flow
-        self.__dynamic_mode: bool = not bool(control_flow)
-        self.__track_relations: bool = track_relations
-        self.__miner_subjects: Dict[str, Subject[BOEvent]] = {}
+    def __init__(self, control_flow: Dict[str, StreamMiner], object_max_approx_error: float = 0.0001):
+        self.__object_max_approx_error = object_max_approx_error
+        self.__control_flow = control_flow
+        self.__dynamic_mode = not bool(control_flow)
+
+        self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
+        self.__subscriptions: Dict[str, DisposableBase] = {}
         self.__output_subject: Subject = Subject()
-        self.active_objects: set[str] = set()
-        # keep track of each subject’s subscription
-        self.__subscriptions: Dict[str, Disposable] = {}
-
-
-        # Pre-register static streams if not in dynamic mode
-        if not self.__dynamic_mode:
-            for obj_type, miner in self.__control_flow.items():
-                self._register_stream(obj_type, miner)
-
-        # Pre-register the relation stream if tracking is enabled
-        if self.__track_relations:
-            if self.__dynamic_mode:
-                self._register_stream("relation", miner=object_relations_miner_lossy_counting()),
-            else:
-                self._register_stream("relation", miner=object_relations_miner_lossy_counting(dynamic_mode=self.__dynamic_mode))
-
+        self.__alive_streams: Set[str] = set()
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
-        subject = Subject[BOEvent]()
+        subject = Subject[Union[BOEvent, dict]]()
         self.__miner_subjects[obj_type] = subject
-        miner_op = miner or heuristics_miner_lossy_counting(50)
+        miner_op = miner or heuristics_miner_lossy_counting(20)
+        self.__alive_streams.add(obj_type)
 
-        print(f"Started stream for object type '{obj_type}' with miner {miner_op}")
-        if obj_type == "relation":
-            # If the object type is "relation", we use the relation miner
-            stream_op = self._relation_stream(miner_op)
-        else:
-            print(f"Adding stream for object type '{obj_type}' with miner {miner_op}")
-            self.active_objects.add(obj_type)
-            stream_op = self._basic_stream(obj_type, miner_op)
-
-
-        subscription = subject.pipe(stream_op).subscribe(
-            on_next=self.__output_subject.on_next,
-            on_error=lambda e: print(f"Error in miner for '{obj_type}': {e}"),
-            on_completed=lambda: None  # <- ignore the branch’s completion
+        dfg_stream = subject.pipe(
+            miner_op,
+            ops.map(lambda model: {
+                "type": "model",
+                "object_type": obj_type,
+                "model": model
+            }),
         )
-        self.__subscriptions[obj_type] = subscription
+
+        disp = dfg_stream.subscribe(
+            on_next=lambda msg: self.__output_subject.on_next(msg),
+            on_error=lambda e: print(f"[{obj_type}] error:", e),
+            on_completed=lambda: None
+        )
+        self.__subscriptions[obj_type] = disp
 
     def _route_to_miner(self, event: BOEvent):
-        if self.__track_relations:
-            key =  "relation"
-            self.__miner_subjects[key].on_next(event)
+        for flat_event in event.flatten():
+            obj_type = flat_event.get_omap_types()[0]
 
-        # flatten the event to get the object type
-        for flattened_event in event.flatten():
-            obj_type = flattened_event.get_omap_types()[0]  # Assuming single object type per event
-            if obj_type not in self.__miner_subjects:
-                print(" → need to register", obj_type)
-                if self.__dynamic_mode or obj_type in self.__control_flow:
-                    self._register_stream(obj_type)
-                else:
-                    continue
+            if obj_type not in self.__miner_subjects and (self.__dynamic_mode or obj_type in self.__control_flow):
+                self._register_stream(obj_type, self.__control_flow.get(obj_type))
 
-            self.__miner_subjects[obj_type].on_next(flattened_event)
+            self.__miner_subjects[obj_type].on_next(flat_event)
 
-    def op(self) -> Callable[[Observable[BOEvent]], Observable[Dict[str, Any]]]:
-        # Returns the actual operator function that transforms a BOEvent stream
-        def operator(stream: Observable[BOEvent]) -> Observable[Dict[str, Any]]:
-            return self._miner_stream(stream)
-        return operator
+    def _check_cleanup(self, event: Union[BOEvent, dict]):
+        if isinstance(event, dict) and event.get("command") == "deregister":
+            obj_type = event.get("object_type")
+            if obj_type in self.__alive_streams:
+                print(f"[CLEANUP] Sending terminate signal for {obj_type}")
+                subject = self.__miner_subjects[obj_type]
+                self.__miner_subjects.pop(obj_type, None)
+                self.__subscriptions.pop(obj_type, None)
+                self.__alive_streams.pop(obj_type)
 
-    def _miner_stream(self, stream: Observable[BOEvent]) -> Observable[Dict[str, Any]]:
-        routing = stream.pipe(
-            ops.do_action(self._route_to_miner),
-            ops.ignore_elements()
-        )
-        return routing.pipe(ops.merge(self.__output_subject))
+    def _miner_stream(self, stream: Observable[BOEvent]) -> Observable[dict]:
+        def process(event: Union[BOEvent, dict]) -> Observable[dict]:
+            if isinstance(event, BOEvent):
+                self._route_to_miner(event)
+                return empty()
+            else:
+                self._check_cleanup(event)
+                return just(event)
 
-    def _deregister_stream(self, obj_types_alive: set[str]):
-        print(f"Active objects OC Streams: {self.active_objects}")
-        print(f"Alive objects AER: {obj_types_alive}")
-        inactive = self.active_objects - obj_types_alive
-        for obj_type in inactive:
-            # 1) complete the subject so it flushes everything it already
-            #    has and then stops (but won't close the merged output)
-            print(f"Miner subjects: {self.__miner_subjects.keys()}")
-            subj = self.__miner_subjects.pop(obj_type, None)
-            print(f"Miner subjects after: {self.__miner_subjects.keys()}")
-            if subj:
-                subj.on_completed()
-
-            # 2) remove bookkeeping
-            self.active_objects.remove(obj_type)
-
-            # 3) optionally dispose the subscription if you want to
-            #    remove any leftover resources—but this is now optional:
-            sub = self.__subscriptions.pop(obj_type, None)
-            if sub:
-                sub.dispose()
-
-
-    def get_mode(self) -> bool:
-        return self.__dynamic_mode
-
-    def get_control_flow(self) -> Dict[str, StreamMiner]:
-        return self.__control_flow
-
-    # Basic mining pipeline per object type
-    def _basic_stream(self, obj_type: str, miner: StreamMiner) -> Callable:
-        return lambda src: src.pipe(
-            miner,
-            ops.filter(lambda model: bool(getattr(model, "dfg", {}))),
-            ops.map(lambda model: {"object_type": obj_type, "model": model})
+        return stream.pipe(
+            object_lossy_counting_operator(self.__object_max_approx_error, self.__control_flow),
+            ops.flat_map(process),
+            ops.merge(self.__output_subject),
         )
 
-    # Extended pipeline with object-relations included
-    def _relation_stream(self, miner: StreamMiner) -> Callable:
-        return lambda src: src.pipe(
-            miner,
-            #ops.do_action(print),
-            ops.do_action(lambda model:self._deregister_stream(model["live_objects"]) if self.__dynamic_mode else None),
-            ops.map(lambda model: {
-                "aer_diagram": model["aer_diagram"],
-            })
-        )
+    @property
+    def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:
+        return self._miner_stream

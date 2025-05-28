@@ -21,15 +21,11 @@ def heuristics_miner_lossy_counting(
         and_threshold=and_threshold)
 
 
-    def miner(event: Union[AbstractEvent, dict]) -> Observable[dict]:
-        if isinstance(event, dict) and event.get("signal") == "terminate":
-            return just({"type": "deregister", "object_type": event.get("object_type")})
-
+    def miner(event: AbstractEvent) -> Observable[dict]:
         if isinstance(event, BOEvent):
             # Verify that the event is flattened
             if len(event.get_object_ids()) != 1:
                 raise ValueError("BOEvent should be flattened before supplied to miner")
-
             # Wrapping BOEvent into BEvent
             trace_name = event.get_object_ids()[0]
             b_event = BEvent(
@@ -45,16 +41,7 @@ def heuristics_miner_lossy_counting(
             raise TypeError(f"Unsupported event type: {type(event)}")
 
         if hm.observed_events() % model_update_frequency == 0:
-            if event is isinstance(event, BEvent):
-                return just(hm.get_model())
-            else:
-                model = hm.get_model()
-                if model and model.dfg:
-                    return just({
-                        "type": "model",
-                        "object_type": event.get_omap_types()[0],
-                        "model": hm.get_model(),
-                    })
+            return just(hm.get_model())
         return empty()
 
     return ops.flat_map(miner)

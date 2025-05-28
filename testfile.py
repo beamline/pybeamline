@@ -46,7 +46,7 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test,15), (test_events_phaseflow, 50), (test,15)], shuffle=False)
+combined_log = dict_test_ocel_source([(test,15), (test_events_phaseflow, 100), (test,10)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
@@ -100,10 +100,8 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_dfg_operator(control_flow,object_max_approx_error=0.5), # the bucket width is 1/0.9 = 10
-    #ops.do_action(print)
-    #ops.do_action(lambda m: print(m) if m.get("deregister") is not None else None),
-    oc_dfg_merge_operator()
+    oc_operator(object_max_approx_error=0.9),
+    oc_merge_operator(),
 ).subscribe(lambda msg: append_ocdfg(msg))
 
 
