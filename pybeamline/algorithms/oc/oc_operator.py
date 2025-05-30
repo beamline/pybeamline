@@ -1,4 +1,3 @@
-import math
 from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable, merge, empty, just
@@ -9,8 +8,10 @@ from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
-# Protocol defining how a miner should behave: transforms BOEvent stream → messages (dicts)
 class StreamMiner(Protocol):
+    """
+    Protocol representing a callable that consumes a stream of BOEvents and emits HeuristicsNet models.
+    """
     def __call__(self, stream: Observable[BOEvent]) -> Observable[HeuristicsNet]:
         ...
 
@@ -19,6 +20,10 @@ def oc_operator(
     control_flow: Optional[Dict[str, StreamMiner]] = None,
     object_max_approx_error: float = 0.0001
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
+    """
+        Factory function for creating an object-centric process mining operator.
+        Validates control flow dictionary if supplied and instantiates the OCOperator.
+    """
     if control_flow is not None and not isinstance(control_flow, dict):
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
     for obj_type, miner in (control_flow or {}).items():
@@ -32,6 +37,10 @@ def oc_operator(
 
 
 class OCOperator:
+    """
+    Object-Centric Operator for reactive stream processing of BOEvents.
+    Manages per-object-type miner streams by the use of object-lossy-counting on dynamically or statically chosen object types.
+    """
     def __init__(self, control_flow: Dict[str, StreamMiner], object_max_approx_error: float = 0.0001):
         self.__object_max_approx_error = object_max_approx_error
         self.__control_flow = control_flow
@@ -40,13 +49,14 @@ class OCOperator:
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__subscriptions: Dict[str, DisposableBase] = {}
         self.__output_subject: Subject = Subject()
-        self.__alive_streams: Set[str] = set()
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
+        """
+        Register a new miner stream for the given object type.
+        """
         subject = Subject[Union[BOEvent, dict]]()
         self.__miner_subjects[obj_type] = subject
         miner_op = miner or heuristics_miner_lossy_counting(20)
-        self.__alive_streams.add(obj_type)
 
         dfg_stream = subject.pipe(
             miner_op,
@@ -65,6 +75,10 @@ class OCOperator:
         self.__subscriptions[obj_type] = disp
 
     def _route_to_miner(self, event: BOEvent):
+        """
+        Flatten the incoming BOEvent and route it to its corresponding miner subject.
+        If dynamic mode is enabled, miners are created on-the-fly if not present.
+        """
         for flat_event in event.flatten():
             obj_type = flat_event.get_omap_types()[0]
 
@@ -73,7 +87,10 @@ class OCOperator:
 
             self.__miner_subjects[obj_type].on_next(flat_event)
 
-    def _check_cleanup(self, event: Union[BOEvent, dict]):
+    def _handle_deregistration_event(self, event: Union[BOEvent, dict]):
+        """
+        Handle deregistration events and clean up associated streams.
+        """
         if isinstance(event, dict) and event.get("command") == "deregister":
             obj_type = event.get("object_type")
             if obj_type in self.__alive_streams:
@@ -81,15 +98,17 @@ class OCOperator:
                 subject = self.__miner_subjects[obj_type]
                 self.__miner_subjects.pop(obj_type, None)
                 self.__subscriptions.pop(obj_type, None)
-                self.__alive_streams.pop(obj_type)
 
-    def _miner_stream(self, stream: Observable[BOEvent]) -> Observable[dict]:
+    def _build_operator_pipeline(self, stream: Observable[BOEvent]) -> Observable[dict]:
+        """
+        Main reactive pipeline: routes events, applies lossy counting, and merges miner outputs.
+        """
         def process(event: Union[BOEvent, dict]) -> Observable[dict]:
             if isinstance(event, BOEvent):
                 self._route_to_miner(event)
                 return empty()
             else:
-                self._check_cleanup(event)
+                self._handle_deregistration_event(event)
                 return just(event)
 
         return stream.pipe(
@@ -100,4 +119,4 @@ class OCOperator:
 
     @property
     def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:
-        return self._miner_stream
+        return self._build_operator_pipeline

@@ -49,7 +49,7 @@ class ObjectLossyCountingOperator:
             obj_type = flat_event.get_omap_types()[0]
 
             if bool(self.__control_flow_object_types.keys()):
-                if all(obj_type not in self.__control_flow_object_types):
+                if obj_type not in self.__control_flow_object_types:
                     continue
 
 
