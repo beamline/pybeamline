@@ -53,9 +53,6 @@ combined_log = dict_test_ocel_source([(test,15), (test_events_phaseflow, 100), (
 
 
 control_flow = {
-    "Receptionist": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
-    "Guest": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
-    "Booking": heuristics_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.1),
     "Order": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
     "Item": heuristics_miner_lossy_counting(model_update_frequency=5),
     "Customer": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
@@ -100,7 +97,8 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_operator(object_max_approx_error=0.9),
+    oc_operator(control_flow=control_flow,object_max_approx_error=0.9),
+    ops.do_action(print),
     oc_merge_operator(),
 ).subscribe(lambda msg: append_ocdfg(msg))
 
@@ -116,11 +114,11 @@ for i, m in enumerate(emitted_relations):
 visualizer.generate_relation_gif()
 
 """
-for i, m in enumerate(emitted_ocdfgs):
-    if i%5 == 0:
-        visualizer.save(m)
+#for i, m in enumerate(emitted_ocdfgs):
+#    if i%5 == 0:
+#        visualizer.save(m)
 
-visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
+#visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
 
 #for i, m in enumerate(emitted):
 #    print(m["relation"])

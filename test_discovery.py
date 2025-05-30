@@ -1,4 +1,7 @@
 from typing import Tuple, List, Any, Dict
+
+from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
 from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
@@ -55,8 +58,8 @@ log = ocel_log_source_from_file("tests/logistics.jsonocel")
 # Set based
 def jaccard_similarity(model: set, ref_model: set) -> float:
     intersection = model.intersection(ref_model)
-    if intersection is not None:
-        print(f"The missing edges in the model: {ref_model - intersection}")
+    #if intersection is not None:
+    #    print(f"The missing edges in the model: {ref_model - intersection}")
     intersection = len(model.intersection(ref_model))
     union = len(model.union(ref_model))
 
@@ -72,8 +75,9 @@ def append_ocdfg(ocdfg: OCDFG):
 
 
 log.pipe(
-    oc_dfg_operator(),
-    oc_dfg_merge_operator()
+    oc_operator(object_max_approx_error=0.02),
+    ops.do_action(print),
+    oc_merge_operator()
 ).subscribe(append_ocdfg)
 
 

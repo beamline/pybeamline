@@ -1,6 +1,8 @@
 from numpy.matlib import empty
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
+from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
 from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
@@ -56,7 +58,7 @@ control_flow = {
 # Set based
 def jaccard_similarity(model: set, ref_model: set) -> float:
     intersection = model.intersection(ref_model)
-    if intersection is not None:
+    if intersection is not None and not bool(intersection):
         print(f"The missing edges in the model: {ref_model - intersection}")
     intersection = len(model.intersection(ref_model))
     union = len(model.union(ref_model))
@@ -73,8 +75,8 @@ def append_ocdfg(ocdfg: OCDFG):
 
 
 source.pipe(
-    oc_dfg_operator(object_max_approx_error=0.5),
-    oc_dfg_merge_operator()
+    oc_operator(object_max_approx_error=0.5),
+    oc_merge_operator()
 ).subscribe(append_ocdfg)
 
 
