@@ -47,7 +47,6 @@ class OCOperator:
         self.__dynamic_mode = not bool(control_flow)
 
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
-        self.__subscriptions: Dict[str, DisposableBase] = {}
         self.__output_subject: Subject = Subject()
 
         for obj_type, miner in control_flow.items():
@@ -57,7 +56,7 @@ class OCOperator:
         """
         Register a new miner stream for the given object type.
         """
-        subject = Subject[Union[BOEvent, dict]]()
+        subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
         miner_op = miner or heuristics_miner_lossy_counting(20)
 
@@ -70,12 +69,11 @@ class OCOperator:
             }),
         )
 
-        disp = dfg_stream.subscribe(
+        dfg_stream.subscribe(
             on_next=lambda msg: self.__output_subject.on_next(msg),
             on_error=lambda e: print(f"[{obj_type}] error:", e),
             on_completed=lambda: None
         )
-        self.__subscriptions[obj_type] = disp
 
     def _route_to_miner(self, event: BOEvent):
         """
@@ -105,7 +103,7 @@ class OCOperator:
             obj_type = event.get("object_type")
             subject = self.__miner_subjects[obj_type]
             self.__miner_subjects.pop(obj_type, None)
-            self.__subscriptions.pop(obj_type, None)
+
 
     def _build_operator_pipeline(self, stream: Observable[BOEvent]) -> Observable[dict]:
         """
