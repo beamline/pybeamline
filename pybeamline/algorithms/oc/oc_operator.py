@@ -4,7 +4,7 @@ from reactivex import operators as ops, Observable, merge, empty, just
 from reactivex.abc import DisposableBase
 from reactivex.subject import Subject
 
-from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy_counting_operator
+from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy_counting_operator, Command
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
@@ -51,7 +51,6 @@ class OCOperator:
         self.__output_subject: Subject = Subject()
 
         for obj_type, miner in control_flow.items():
-            print("Using Control Flow Miner for", obj_type)
             self._register_stream(obj_type, miner)
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
@@ -87,23 +86,26 @@ class OCOperator:
             obj_type = flat_event.get_omap_types()[0]
 
             if obj_type not in self.__miner_subjects and (self.__dynamic_mode or obj_type in self.__control_flow):
-                self._register_stream(obj_type, self.__control_flow.get(obj_type))
+                if obj_type in self.__control_flow:
+                    # Reregistration of selected miner in control flow
+                    self._register_stream(obj_type, miner=self.__control_flow[obj_type])
+                else:
+                    # Dynamically create a new miner subject
+                    self._register_stream(obj_type)
 
             if obj_type not in self.__miner_subjects:
                 continue
             self.__miner_subjects[obj_type].on_next(flat_event)
 
-    def _handle_deregistration_event(self, event: Union[BOEvent, dict]):
+    def _handle_deregistration_event(self, event: dict):
         """
         Handle deregistration events and clean up associated streams.
         """
-        if isinstance(event, dict) and event.get("command") == "deregister":
+        if isinstance(event, dict) and event.get("command") == Command.DEREGISTER:
             obj_type = event.get("object_type")
-            if obj_type in self.__alive_streams:
-                print(f"[CLEANUP] Sending terminate signal for {obj_type}")
-                subject = self.__miner_subjects[obj_type]
-                self.__miner_subjects.pop(obj_type, None)
-                self.__subscriptions.pop(obj_type, None)
+            subject = self.__miner_subjects[obj_type]
+            self.__miner_subjects.pop(obj_type, None)
+            self.__subscriptions.pop(obj_type, None)
 
     def _build_operator_pipeline(self, stream: Observable[BOEvent]) -> Observable[dict]:
         """
