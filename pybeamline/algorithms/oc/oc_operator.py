@@ -17,7 +17,7 @@ class StreamMiner(Protocol):
 
 
 def oc_operator(
-    control_flow: Optional[Dict[str, StreamMiner]] = None,
+    control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
     object_max_approx_error: float = 0.0001
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
@@ -41,7 +41,7 @@ class OCOperator:
     Object-Centric Operator for reactive stream processing of BOEvents.
     Manages per-object-type miner streams by the use of object-lossy-counting on dynamically or statically chosen object types.
     """
-    def __init__(self, control_flow: Dict[str, StreamMiner], object_max_approx_error: float = 0.0001):
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], object_max_approx_error: float = 0.0001):
         self.__object_max_approx_error = object_max_approx_error
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
@@ -50,7 +50,7 @@ class OCOperator:
         self.__output_subject: Subject = Subject()
 
         for obj_type, miner in control_flow.items():
-            self._register_stream(obj_type, miner)
+            self._register_stream(obj_type, miner())
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
@@ -86,7 +86,7 @@ class OCOperator:
             if obj_type not in self.__miner_subjects and (self.__dynamic_mode or obj_type in self.__control_flow):
                 if obj_type in self.__control_flow:
                     # Reregistration of selected miner in control flow
-                    self._register_stream(obj_type, miner=self.__control_flow[obj_type])
+                    self._register_stream(obj_type, miner=self.__control_flow[obj_type]())
                 else:
                     # Dynamically create a new miner subject
                     self._register_stream(obj_type)
