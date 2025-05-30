@@ -14,14 +14,14 @@ def heuristics_miner_lossy_counting(
         model_update_frequency=10,
         max_approx_error=0.001,
         dependency_threshold=0.5,
-        and_threshold=0.8) -> Callable[[Observable[AbstractEvent | dict]], Observable[dict]]:
+        and_threshold=0.8) -> Callable[[Observable], Observable[HeuristicsNet]]:
     hm = HeuristicsMinerLossyCounting(
         max_approx_error=max_approx_error,
         dependency_threshold=dependency_threshold,
         and_threshold=and_threshold)
 
 
-    def miner(event: AbstractEvent) -> Observable[dict]:
+    def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
         if isinstance(event, BOEvent):
             # Verify that the event is flattened
             if len(event.get_object_ids()) != 1:

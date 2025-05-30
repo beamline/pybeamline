@@ -50,6 +50,10 @@ class OCOperator:
         self.__subscriptions: Dict[str, DisposableBase] = {}
         self.__output_subject: Subject = Subject()
 
+        for obj_type, miner in control_flow.items():
+            print("Using Control Flow Miner for", obj_type)
+            self._register_stream(obj_type, miner)
+
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
         Register a new miner stream for the given object type.
@@ -85,6 +89,8 @@ class OCOperator:
             if obj_type not in self.__miner_subjects and (self.__dynamic_mode or obj_type in self.__control_flow):
                 self._register_stream(obj_type, self.__control_flow.get(obj_type))
 
+            if obj_type not in self.__miner_subjects:
+                continue
             self.__miner_subjects[obj_type].on_next(flat_event)
 
     def _handle_deregistration_event(self, event: Union[BOEvent, dict]):
