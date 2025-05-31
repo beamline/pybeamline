@@ -46,18 +46,18 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test,15), (test_events_phaseflow, 100), (test,10)], shuffle=False)
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 20)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
 
 control_flow = {
-    "Order": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Item": heuristics_miner_lossy_counting(model_update_frequency=5),
-    "Customer": heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Shipment": heuristics_miner_lossy_counting(model_update_frequency=10),
-    "Invoice": heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Order": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    "Item": lambda : heuristics_miner_lossy_counting(model_update_frequency=5),
+    "Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=10),
 }
 
 visualizer = Visualizer()
@@ -70,13 +70,12 @@ def save_snapshots(ocdfg, relation_tracker=None):
 
 from reactivex import operators as ops
 # pipe the combined log to the OCOperator op
-emitted_relations = []
-emitted_ocdfgs = []
-def append_ocdfg(m):
+emitted_models = []
+def append_emitted(m):
     """
     Callback to append emitted OCDFGs to the list.
     """
-    emitted_ocdfgs.append(m)
+    emitted_models.append(m)
 
 def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
     """
@@ -98,27 +97,31 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 combined_log.pipe(
     oc_operator(control_flow=control_flow,object_max_approx_error=0.9),
-    ops.do_action(print),
+    #ops.do_action(print),
     oc_merge_operator(),
-).subscribe(lambda msg: append_ocdfg(msg))
+    #ops.do_action(print),
+).subscribe(lambda x: append_emitted(x))
 
 
 
 
-"""
-print(f"Length of emitted: {len(emitted_relations)}")
-for i, m in enumerate(emitted_relations):
-    if i% 50 == 0:
-        visualizer.save_aer_diagram(m)
+print(f"Length of emitted: {len(emitted_models)}")
+# Assert aer_diagram is in the emitted models
+
+for i, m in enumerate(emitted_models):
+    aer_diagram = m.get("aer_diagram")
+    if aer_diagram is not None:
+        visualizer.save_aer_diagram(aer_diagram)
+    else:
+        print(f"Model {i+1} does not contain an AER diagram.")
 
 visualizer.generate_relation_gif()
 
-"""
-#for i, m in enumerate(emitted_ocdfgs):
-#    if i%5 == 0:
-#        visualizer.save(m)
 
-#visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
+for i, m in enumerate(emitted_models):
+    visualizer.save(m["ocdfg"])
+
+visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
 
 #for i, m in enumerate(emitted):
 #    print(m["relation"])

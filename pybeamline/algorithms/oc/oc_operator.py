@@ -4,6 +4,7 @@ from reactivex import operators as ops, Observable, merge, empty, just
 from reactivex.abc import DisposableBase
 from reactivex.subject import Subject
 
+from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import object_relations_miner_lossy_counting
 from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy_counting_operator, Command
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
@@ -119,6 +120,7 @@ class OCOperator:
 
         return stream.pipe(
             object_lossy_counting_operator(self.__object_max_approx_error, self.__control_flow),
+            object_relations_miner_lossy_counting(control_flow=self.__control_flow),
             ops.flat_map(process),
             ops.merge(self.__output_subject),
         )

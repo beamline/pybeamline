@@ -1,136 +1,147 @@
-from enum import Enum
-from typing import Dict, Any, Tuple, Set, Callable
-import copy
-from reactivex import operators as ops, Observable
+from typing import Dict, Any, Tuple, Set, Callable, Optional, Union
+from reactivex import operators as ops, Observable, from_iterable
 from reactivex import just, empty
 
+from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
 from pybeamline.boevent import BOEvent
 from pybeamline.objects.aer_diagram import ActivityERDiagram
-from pybeamline.utils.cardinality import Cardinality
+from pybeamline.utils.cardinality import infer_cardinality, Cardinality
 
-def _infer_cardinality(count1: int, count2: int) -> Cardinality:
-    if count1 == 1 and count2 == 1:
-        return Cardinality.ONE_TO_ONE
-    elif count1 == 1 and count2 > 1:
-        return Cardinality.ONE_TO_MANY
-    elif count1 > 1 and count2 == 1:
-        return Cardinality.MANY_TO_ONE
-    else:
-        return Cardinality.MANY_TO_MANY
 
-def object_relations_miner_lossy_counting(model_update_frequency=100, max_approx_error: float = 0.0001, dynamic_mode: bool = True) -> Callable[
+def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None) -> Callable[
     [Observable[BOEvent]], Observable[Dict[str, Any]]]:
     """
     Object Relationship Miner using a lossy counting approach.
-    :param dynamic_mode:
+    :param control_flow:
     :param model_update_frequency: Frequency of model updates
     :param max_approx_error: Maximum approximation error for the lossy counting on objects
     :return: Function to process BOEvent and return a dictionary with the model
     """
-    obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, dynamic_mode=dynamic_mode)
+    obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
 
-    def miner(event: BOEvent) -> Observable[Dict[str, Any]]:
+    def miner(event: Union[BOEvent,dict]) -> Observable[Dict[str, Any]]:
         if isinstance(event, BOEvent):
             obj_rel.ingest_event(event)
             if obj_rel.observed_events() % model_update_frequency == 0:
-                return just(obj_rel.get_model())
-        return empty()
+                return from_iterable([
+                    {"type": "aer_diagram", "model": obj_rel.get_model()},
+                    event
+                ])
+            return just(event)
+        elif isinstance(event, dict) and event.get("command") == Command.DEREGISTER:
+            obj_type = event.get("object_type")
+            obj_rel.deregister_object_type(obj_type)
+            return just(event)  # return here as well
+        return just(event)
 
     return ops.flat_map(miner)
 
 
 class ObjectRelationMinerLossyCounting:
-    def __init__(self, max_approx_error: float = 0.001, dynamic_mode: bool = True):
-        self.__dynamic_mode = True  # Dynamic mode by default
-        self.__activity_object_relations: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, int]]] = {}
+    def __init__(self, max_approx_error: float = 0.001, control_flow: Optional[Set[str]] = None):
+        self.__control_flow: Optional[Set[str]] = control_flow
         self.__activity_object_presence: Dict[str, Set[str]] = {}
-
-        self.__object_type_tracking: Dict[str, Tuple[int, int]] = {} # obj_type → (frequency, last_bucket)
-
-        self.__observed_events = 1
+        self.__relation_tracking: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, Tuple[int, int]]]] = {} # {# activity: { (type1, type2): {Cardinality: (frequency, bucket)} }}
+        self.__observed_events = 0
         self.__bucket_width = int(1 / max_approx_error)
 
     def ingest_event(self, event: BOEvent):
-        current_bucket = int(self.__observed_events / self.__bucket_width)
         activity = event.get_event_name()
         omap = event.get_omap()
-        types = list(omap.keys())
 
-        # Track frequencies and update bucket of seen object types
-        for obj_type in types:
-            freq, _ = self.__object_type_tracking.get(obj_type, (0, current_bucket))
-            self.__object_type_tracking[obj_type] = (freq + 1, current_bucket)
+        obj_types = [t for t in omap.keys() if not self.__control_flow or t in self.__control_flow]
+        if not obj_types:
+            return
 
-        # Record presence of activity and object types
+        current_bucket = int(self.__observed_events / self.__bucket_width)
+
         if activity not in self.__activity_object_presence:
             self.__activity_object_presence[activity] = set()
-        self.__activity_object_presence[activity].update(types)
+        if activity not in self.__relation_tracking:
+            self.__relation_tracking[activity] = {}
 
-        # Ensure the activity is initialized in the relations dictionary
-        if activity not in self.__activity_object_relations:
-            self.__activity_object_relations[activity] = {}
+        self.__activity_object_presence[activity].update(obj_types)
 
-        # Record relations
-        for i in range(len(types)):
-            for j in range(i + 1, len(types)):
-                type1, type2 = sorted([types[i], types[j]])
-                count1 = len(omap[type1])
-                count2 = len(omap[type2])
-                cardinality = _infer_cardinality(count1, count2)
-                key = (type1, type2)
+        if len(obj_types) >= 2:
+            for i in range(len(obj_types)):
+                for j in range(i + 1, len(obj_types)):
+                    type1, type2 = sorted([obj_types[i], obj_types[j]])
+                    key = (type1, type2)
 
-                if key not in self.__activity_object_relations[activity]:
-                    self.__activity_object_relations[activity][key] = {c: 0 for c in Cardinality}
+                    count1 = len(omap[type1])
+                    count2 = len(omap[type2])
+                    cardinality = infer_cardinality(count1, count2)
 
-                self.__activity_object_relations[activity][key][cardinality] += 1
+                    if key not in self.__relation_tracking[activity]:
+                        self.__relation_tracking[activity][key] = {}
+                    if cardinality not in self.__relation_tracking[activity][key]:
+                        self.__relation_tracking[activity][key][cardinality] = (0, current_bucket)
 
-        # Bucket cleaning time
-        if self.__observed_events % self.__bucket_width == 0 and self.__dynamic_mode:
-            self._cleanup(self.__observed_events)
+                    freq, _ = self.__relation_tracking[activity][key][cardinality]
+                    self.__relation_tracking[activity][key][cardinality] = (freq + 1, current_bucket)
+
+        if self.__observed_events % self.__bucket_width == 0:
+            self._cleanup(current_bucket)
 
         self.__observed_events += 1
 
     def _cleanup(self, current_bucket: int):
-        stale_types = [obj for obj, (freq, bucket) in self.__object_type_tracking.items()
-                       if freq + bucket <= current_bucket]
+        for activity in list(self.__relation_tracking.keys()):
+            relation_map = self.__relation_tracking[activity]
+            to_remove_relation_keys = []
 
-        if stale_types:
-            print(f"\n[CLEANUP @ bucket {current_bucket}] Removing object types: {stale_types}")
+            for rel_key, card_map in relation_map.items():
+                to_remove_cardinalities = []
 
-        for obj_type in stale_types:
-            del self.__object_type_tracking[obj_type]
+                for cardinality, (freq, last_bucket) in card_map.items():
+                    if freq + last_bucket <= current_bucket:
+                        to_remove_cardinalities.append(cardinality)
 
-            for activity in self.__activity_object_presence:
-                self.__activity_object_presence[activity].discard(obj_type)
+                for cardinality in to_remove_cardinalities:
+                    del card_map[cardinality]
 
-            for activity in self.__activity_object_relations:
-                rels = self.__activity_object_relations[activity]
-                keys_to_remove = [k for k in rels if obj_type in k]
-                for k in keys_to_remove:
-                    del rels[k]
-                    print(f"  [RELATION] Removed relation {k} from activity '{activity}'")
+                if not card_map:
+                    to_remove_relation_keys.append(rel_key)
+
+            for rel_key in to_remove_relation_keys:
+                del relation_map[rel_key]
+
+                type1, type2 = rel_key
+                self.__activity_object_presence[activity].discard(type1)
+                self.__activity_object_presence[activity].discard(type2)
+
+            if not relation_map:
+                del self.__relation_tracking[activity]
+                self.__activity_object_presence.pop(activity, None)
 
     def get_model(self):
-        live_objects = set(self.__object_type_tracking.keys())
-        diagram = ActivityERDiagram()
+        """
+        Builds the current Activity-Entity Relationship Diagram using the most
+        frequent surviving cardinalities per (activity, obj_type1, obj_type2) relations
+        """
+        aer_diagram = ActivityERDiagram()
+        for activity, rel_map in self.__relation_tracking.items():
+            for (obj1, obj2), card_map in rel_map.items():
+                if not card_map:
+                    continue  # skip empty entries
 
-        # For each activity, for each (type1,type2) pair, infer the cardinality
-        for activity, pairs in self.__activity_object_relations.items():
-            for (t1, t2), counts in pairs.items():
-                most_common = max(counts.items(), key=lambda kv: kv[1])[0]  # Cardinality enum
-                diagram.add_relation(activity, t1, t2, most_common)
+                # Find the most frequent cardinality for this (activity, relation) pair
+                most_common_card = max(card_map.items(), key=lambda kv: kv[1][0])[0]
+                aer_diagram.add_relation(activity, obj1, obj2, most_common_card)
 
-        return {"aer_diagram": diagram,
-                "live_objects": live_objects}
+        return aer_diagram
 
     def observed_events(self) -> int:
         return self.__observed_events
 
-    def __str__(self):
-        lines = ["Activity-Object Type Relations:"]
-        for activity, rels in self.__activity_object_relations.items():
-            lines.append(f"\nActivity: {activity}")
-            for (src, tgt), counter in rels.items():
-                counts = ", ".join(f"{card.value}: {cnt}" for card, cnt in counter.items() if cnt > 0)
-                lines.append(f"  {src} -> {tgt}: {counts}")
-        return "\n".join(lines)
+    def deregister_object_type(self, obj_type):
+        for activity in list(self.__relation_tracking.keys()):
+            rel_map = self.__relation_tracking[activity]
+            keys_to_remove = [k for k in rel_map if obj_type in k]
+            for key in keys_to_remove:
+                del rel_map[key]
+            self.__activity_object_presence[activity].discard(obj_type)
+            if not rel_map:
+                del self.__relation_tracking[activity]
+                self.__activity_object_presence.pop(activity, None)
+

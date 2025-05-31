@@ -38,6 +38,14 @@ class ActivityERDiagram:
         """The (source→target)->card map for one activity."""
         return self.relations.get(activity, {})
 
+    def filter_by_object_types(self, object_types: Set[str]) -> 'ActivityERDiagram':
+        new_diagram = ActivityERDiagram()
+        for activity, rels in self.relations.items():
+            for (source, target), card in rels.items():
+                if source in object_types and target in object_types:
+                    new_diagram.add_relation(activity, source, target, card)
+        return new_diagram
+
     def __repr__(self):
         aer_dict = {
             activity: {

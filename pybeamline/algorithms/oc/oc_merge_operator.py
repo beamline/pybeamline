@@ -1,20 +1,20 @@
 from collections import defaultdict
-from typing import Callable, Optional, Dict, Any
+from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
 
 from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
+from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
 
-def oc_merge_operator() -> Callable[[Observable], Observable[OCDFG]]:
+def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,ActivityERDiagram]]]]:
     manager = OCMergeOperator()
     def operator(stream):
         # Map each incoming message through the manager.process method
         return stream.pipe(
+            ops.do_action(print),
             ops.map(manager.process),
-            ops.filter(lambda x: x is not None),
-            ops.filter(lambda g: g is not None and bool(g.edges)),
-        )
+            ops.filter(lambda x: x is not None))
     return operator
 
 class OCMergeOperator:
@@ -29,14 +29,10 @@ class OCMergeOperator:
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
         self._last_emit: Optional[OCDFG] = None
+        self._aer_diagram: Optional[ActivityERDiagram] = None
 
 
-    def process(self, msg: Dict[str, Any]) -> OCDFG | None:
-        """
-                Handle an incoming message:
-                - {"type": "model", "object_type": ..., "model": ...}
-                - {"type": "deregister", "object_type": ...}
-                """
+    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]] | None:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
         if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
@@ -45,13 +41,20 @@ class OCMergeOperator:
 
         elif msg_type == "command" and obj_type and msg.get("command") == Command.DEREGISTER:
             self._obj_dfg_repo.pop(obj_type, None)
+        elif msg_type == "aer_diagram" and isinstance(msg.get("model"), ActivityERDiagram):
+            # Cleanup Diagram
+            self._aer_diagram = msg["model"]
+            # Determine active object types from OCDFG edges
+            active_obj_types = set(self._obj_dfg_repo.keys())
+            # Prune AERDiagram: only retain relations involving active object types
+            self._aer_diagram = self._aer_diagram.filter_by_object_types(active_obj_types)
 
         else:
             # Skip unknown or malformed messages
             return None
 
         ocdfg = self._build_ocdfg()
-        return ocdfg
+        return {"ocdfg": ocdfg, "aer_diagram": self._aer_diagram}
 
     def _build_ocdfg(self) -> OCDFG:
         """
