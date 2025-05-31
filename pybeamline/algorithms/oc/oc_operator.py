@@ -13,7 +13,7 @@ class StreamMiner(Protocol):
     """
     Protocol representing a callable that consumes a stream of BOEvents and emits HeuristicsNet models.
     """
-    def __call__(self, stream: Observable[BOEvent]) -> Observable[HeuristicsNet]:
+    def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
         ...
 
 
@@ -52,6 +52,26 @@ class OCOperator:
 
         for obj_type, miner in control_flow.items():
             self._register_stream(obj_type, miner())
+        self._register_AER_stream()
+
+
+    def _register_AER_stream(self):
+        subject = Subject[BOEvent]()
+        self.__miner_subjects["AERStream"] = subject
+        miner_op = object_relations_miner_lossy_counting(control_flow=self.__control_flow)
+        aer_stream = subject.pipe(
+            miner_op,
+            ops.map(lambda model: {
+                "type": "aer_diagram",
+                "model": model
+            }),
+        )
+        aer_stream.subscribe(
+            on_next=lambda msg: self.__output_subject.on_next(msg),
+            on_error=lambda e: print(f"[AER-STREAM] error:", e),
+            on_completed=lambda: None
+        )
+
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
@@ -81,6 +101,7 @@ class OCOperator:
         Flatten the incoming BOEvent and route it to its corresponding miner subject.
         If dynamic mode is enabled, miners are created on-the-fly if not present.
         """
+        self.__miner_subjects["AERStream"].on_next(event)
         for flat_event in event.flatten():
             obj_type = flat_event.get_omap_types()[0]
 
@@ -120,7 +141,6 @@ class OCOperator:
 
         return stream.pipe(
             object_lossy_counting_operator(self.__object_max_approx_error, self.__control_flow),
-            object_relations_miner_lossy_counting(control_flow=self.__control_flow),
             ops.flat_map(process),
             ops.merge(self.__output_subject),
         )

@@ -14,7 +14,8 @@ def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDF
         return stream.pipe(
             ops.do_action(print),
             ops.map(manager.process),
-            ops.filter(lambda x: x is not None))
+            ops.filter(lambda e: e is not None),
+        )
     return operator
 
 class OCMergeOperator:

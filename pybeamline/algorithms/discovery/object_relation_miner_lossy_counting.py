@@ -1,15 +1,13 @@
 from typing import Dict, Any, Tuple, Set, Callable, Optional, Union
 from reactivex import operators as ops, Observable, from_iterable
 from reactivex import just, empty
-
-from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
 from pybeamline.boevent import BOEvent
 from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.utils.cardinality import infer_cardinality, Cardinality
 
 
 def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None) -> Callable[
-    [Observable[BOEvent]], Observable[Dict[str, Any]]]:
+    [Observable[BOEvent]], Observable[ActivityERDiagram]]:
     """
     Object Relationship Miner using a lossy counting approach.
     :param control_flow:
@@ -19,20 +17,12 @@ def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_
     """
     obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
 
-    def miner(event: Union[BOEvent,dict]) -> Observable[Dict[str, Any]]:
-        if isinstance(event, BOEvent):
-            obj_rel.ingest_event(event)
-            if obj_rel.observed_events() % model_update_frequency == 0:
-                return from_iterable([
-                    {"type": "aer_diagram", "model": obj_rel.get_model()},
-                    event
-                ])
-            return just(event)
-        elif isinstance(event, dict) and event.get("command") == Command.DEREGISTER:
-            obj_type = event.get("object_type")
-            obj_rel.deregister_object_type(obj_type)
-            return just(event)  # return here as well
-        return just(event)
+    def miner(event: Union[BOEvent,dict]) -> Observable[ActivityERDiagram]:
+        obj_rel.ingest_event(event)
+        if obj_rel.observed_events() % model_update_frequency == 0:
+             return just(obj_rel.get_model())
+        else:
+            return empty()
 
     return ops.flat_map(miner)
 

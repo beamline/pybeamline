@@ -69,15 +69,16 @@ def jaccard_similarity(model: set, ref_model: set) -> float:
     return intersection / union
 
 emitted_ocdfgs = []
-def append_ocdfg(ocdfg: OCDFG):
+def append_ocdfg(output: dict):
     global emitted_ocdfgs
-    emitted_ocdfgs.append(ocdfg)
+    emitted_ocdfgs.append(output["ocdfg"])
 
 
 log.pipe(
     oc_operator(object_max_approx_error=0.02),
-    ops.do_action(print),
-    oc_merge_operator()
+    #ops.do_action(print),
+    oc_merge_operator(),
+    ops.do_action(print)
 ).subscribe(append_ocdfg)
 
 
