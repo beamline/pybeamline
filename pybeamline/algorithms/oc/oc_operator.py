@@ -19,7 +19,9 @@ class StreamMiner(Protocol):
 
 def oc_operator(
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-    object_max_approx_error: float = 0.0001
+    object_max_approx_error: float = 0.0001,
+    relation_model_update_frequency: int = 30,
+    relation_max_approx_error: float = 0.01
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
         Factory function for creating an object-centric process mining operator.
@@ -29,11 +31,12 @@ def oc_operator(
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
     for obj_type, miner in (control_flow or {}).items():
         if not callable(miner):
-            raise ValueError(f"control_flow values must be callables, got {type(miner).__name__} for '{obj_type}'")
+            raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
 
     return OCOperator(
         control_flow=control_flow or {},
-        object_max_approx_error=object_max_approx_error
+        object_max_approx_error=object_max_approx_error,
+        relation_max_approx_error=relation_max_approx_error
     ).operator
 
 
@@ -42,7 +45,9 @@ class OCOperator:
     Object-Centric Operator for reactive stream processing of BOEvents.
     Manages per-object-type miner streams by the use of object-lossy-counting on dynamically or statically chosen object types.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], object_max_approx_error: float = 0.0001):
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], object_max_approx_error: float = 0.0001,relation_model_update_frequency: int = 30, relation_max_approx_error: float = 0.01):
+        self.__relation_model_update_frequency = relation_model_update_frequency
+        self.__relation_max_approx_error = relation_max_approx_error
         self.__object_max_approx_error = object_max_approx_error
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
@@ -52,13 +57,14 @@ class OCOperator:
 
         for obj_type, miner in control_flow.items():
             self._register_stream(obj_type, miner())
-        self._register_AER_stream()
+        self._register_aer_stream()
 
-
-    def _register_AER_stream(self):
+    def _register_aer_stream(self):
         subject = Subject[BOEvent]()
         self.__miner_subjects["AERStream"] = subject
-        miner_op = object_relations_miner_lossy_counting(control_flow=self.__control_flow)
+        miner_op = object_relations_miner_lossy_counting(model_update_frequency=self.__relation_model_update_frequency,
+                                                        control_flow=self.__control_flow,
+                                                        max_approx_error=self.__relation_max_approx_error)
         aer_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
@@ -144,6 +150,12 @@ class OCOperator:
             ops.flat_map(process),
             ops.merge(self.__output_subject),
         )
+
+    def get_mode(self) -> bool:
+        """
+        Returns True if the operator is in dynamic mode (no control flow), False otherwise.
+        """
+        return self.__dynamic_mode
 
     @property
     def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:

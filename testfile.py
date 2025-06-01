@@ -56,8 +56,8 @@ control_flow = {
     "Order": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
     "Item": lambda : heuristics_miner_lossy_counting(model_update_frequency=5),
     "Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=10),
-    "Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=10),
+    "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
+    "Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=1),
 }
 
 visualizer = Visualizer()
@@ -96,9 +96,9 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_operator(control_flow=control_flow,object_max_approx_error=0.9),
-    ops.do_action(print),
-    #oc_merge_operator(),
+    oc_operator(control_flow=control_flow,object_max_approx_error=0.01),
+    #ops.do_action(print),
+    oc_merge_operator(),
     #ops.do_action(print),
 ).subscribe()#lambda x: append_emitted(x))
 

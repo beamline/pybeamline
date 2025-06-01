@@ -30,27 +30,39 @@ def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_
 class ObjectRelationMinerLossyCounting:
     def __init__(self, max_approx_error: float = 0.001, control_flow: Optional[Set[str]] = None):
         self.__control_flow: Optional[Set[str]] = control_flow
-        self.__activity_object_presence: Dict[str, Set[str]] = {}
         self.__relation_tracking: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, Tuple[int, int]]]] = {} # {# activity: { (type1, type2): {Cardinality: (frequency, bucket)} }}
+        self.__unary_tracking: Dict[str, Dict[str, int]] = {}
         self.__observed_events = 0
         self.__bucket_width = int(1 / max_approx_error)
 
     def ingest_event(self, event: BOEvent):
         activity = event.get_event_name()
         omap = event.get_omap()
+        current_bucket = int(self.__observed_events / self.__bucket_width)
 
         obj_types = [t for t in omap.keys() if not self.__control_flow or t in self.__control_flow]
         if not obj_types:
             return
 
-        current_bucket = int(self.__observed_events / self.__bucket_width)
+        if activity not in self.__unary_tracking:
+            self.__unary_tracking[activity] = {}
 
-        if activity not in self.__activity_object_presence:
-            self.__activity_object_presence[activity] = set()
+        # If unary (only one object type), track unary participation
+        if len(obj_types) == 1:
+            only_type = obj_types[0]
+            self.__unary_tracking[activity][only_type] = self.__unary_tracking[activity].get(only_type, 0) + 1
+
+        # If binary or more, remove unary participations for those types
+        elif len(obj_types) >= 2:
+            for t in obj_types:
+                if t in self.__unary_tracking[activity]:
+                    del self.__unary_tracking[activity][t]
+            # Clean up empty unary tracking dict
+            if not self.__unary_tracking[activity]:
+                del self.__unary_tracking[activity]
+
         if activity not in self.__relation_tracking:
             self.__relation_tracking[activity] = {}
-
-        self.__activity_object_presence[activity].update(obj_types)
 
         if len(obj_types) >= 2:
             for i in range(len(obj_types)):
@@ -76,33 +88,35 @@ class ObjectRelationMinerLossyCounting:
         self.__observed_events += 1
 
     def _cleanup(self, current_bucket: int):
+        # Iterate over all activities for which we have relation tracking
         for activity in list(self.__relation_tracking.keys()):
             relation_map = self.__relation_tracking[activity]
             to_remove_relation_keys = []
 
+            # Go through each relation key (a pair of object types)
             for rel_key, card_map in relation_map.items():
                 to_remove_cardinalities = []
 
+                # Evaluate each observed cardinality for that object pair
                 for cardinality, (freq, last_bucket) in card_map.items():
                     if freq + last_bucket <= current_bucket:
                         to_remove_cardinalities.append(cardinality)
 
+                # Actually remove those outdated cardinalities
                 for cardinality in to_remove_cardinalities:
                     del card_map[cardinality]
 
+                # If no cardinalities remain for this relation, mark the relation key for removal
                 if not card_map:
                     to_remove_relation_keys.append(rel_key)
 
+            # Remove relation keys that no longer have valid cardinalities
             for rel_key in to_remove_relation_keys:
                 del relation_map[rel_key]
 
-                type1, type2 = rel_key
-                self.__activity_object_presence[activity].discard(type1)
-                self.__activity_object_presence[activity].discard(type2)
-
+            # If no relations are left for this activity, remove the whole activity
             if not relation_map:
                 del self.__relation_tracking[activity]
-                self.__activity_object_presence.pop(activity, None)
 
     def get_model(self):
         """
@@ -119,19 +133,14 @@ class ObjectRelationMinerLossyCounting:
                 most_common_card = max(card_map.items(), key=lambda kv: kv[1][0])[0]
                 aer_diagram.add_relation(activity, obj1, obj2, most_common_card)
 
+        for activity, type_counts in self.__unary_tracking.items():
+            for obj_type, count in type_counts.items():
+                if count > 0:
+                    aer_diagram.add_unary_participation(activity, obj_type)
+
         return aer_diagram
 
     def observed_events(self) -> int:
         return self.__observed_events
 
-    def deregister_object_type(self, obj_type):
-        for activity in list(self.__relation_tracking.keys()):
-            rel_map = self.__relation_tracking[activity]
-            keys_to_remove = [k for k in rel_map if obj_type in k]
-            for key in keys_to_remove:
-                del rel_map[key]
-            self.__activity_object_presence[activity].discard(obj_type)
-            if not rel_map:
-                del self.__relation_tracking[activity]
-                self.__activity_object_presence.pop(activity, None)
 

@@ -2,7 +2,6 @@ from collections import defaultdict
 from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
-
 from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
 from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
@@ -12,7 +11,6 @@ def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDF
     def operator(stream):
         # Map each incoming message through the manager.process method
         return stream.pipe(
-            ops.do_action(print),
             ops.map(manager.process),
             ops.filter(lambda e: e is not None),
         )
@@ -34,6 +32,7 @@ class OCMergeOperator:
 
 
     def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]] | None:
+
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
         if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
@@ -43,19 +42,36 @@ class OCMergeOperator:
         elif msg_type == "command" and obj_type and msg.get("command") == Command.DEREGISTER:
             self._obj_dfg_repo.pop(obj_type, None)
         elif msg_type == "aer_diagram" and isinstance(msg.get("model"), ActivityERDiagram):
-            # Cleanup Diagram
+            # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]
-            # Determine active object types from OCDFG edges
-            active_obj_types = set(self._obj_dfg_repo.keys())
-            # Prune AERDiagram: only retain relations involving active object types
-            self._aer_diagram = self._aer_diagram.filter_by_object_types(active_obj_types)
 
-        else:
-            # Skip unknown or malformed messages
-            return None
-
+        aer_diagram = self._build_aer_diagram()
         ocdfg = self._build_ocdfg()
-        return {"ocdfg": ocdfg, "aer_diagram": self._aer_diagram}
+        return {"ocdfg": ocdfg, "aer_diagram": aer_diagram}
+
+    def _build_aer_diagram(self) -> ActivityERDiagram:
+        if not self._aer_diagram:
+            return ActivityERDiagram()
+
+        active_object_types = set(self._obj_dfg_repo.keys())
+        filtered = ActivityERDiagram()
+
+        # Add binary relations
+        for activity, rels in self._aer_diagram.relations.items():
+            for (source, target), cardinality in rels.items():
+                if source in active_object_types and target in active_object_types:
+                    filtered.add_relation(activity, source, target, cardinality)
+
+        # Add unary participations
+        if hasattr(self._aer_diagram, "unary_participations"):
+            for activity, types in self._aer_diagram.unary_participations.items():
+                for obj_type in types:
+                    if obj_type in active_object_types:
+                        filtered.add_unary_participation(activity, obj_type)
+
+        self._aer_diagram = filtered
+        return filtered
+
 
     def _build_ocdfg(self) -> OCDFG:
         """

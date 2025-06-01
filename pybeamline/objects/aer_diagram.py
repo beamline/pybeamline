@@ -1,65 +1,69 @@
+from dataclasses import dataclass, field
 from typing import Dict, Tuple, Set
+from collections import defaultdict
 from pybeamline.utils.cardinality import Cardinality
 
 
+@dataclass
 class ActivityERDiagram:
     """
-    Simple container for ER‐diagrams mined per activity.
+    Object-Centric Entity Relationship Diagram (AER).
+    Tracks cardinalities between object types per activity.
+
     Attributes:
-        relations:
-            maps activity name → a dict of ((source_type, target_type) → cardinality)
-        object_types:
-            global set of all object types seen across all activities
+        activities: All activities observed.
+        object_types: All object types seen across relations.
+        relations: Maps activity → (source_type, target_type) → Cardinality.
+        unary_participations: Maps activity → set of object types that appeared alone.
     """
-    def __init__(self):
-        self.relations: Dict[str, Dict[Tuple[str, str], Cardinality]] = {}
+    activities: Set[str] = field(default_factory=set)
+    object_types: Set[str] = field(default_factory=set)
 
-    def add_relation(self,
-                     activity: str,
-                     source: str,
-                     target: str,
-                     card: Cardinality):
-        """
-        Record that, in `activity`, entities of type `source` relate to `target`
-        with the given `cardinality.
-        """
+    relations: Dict[str, Dict[Tuple[str, str], Cardinality]] = field(
+        default_factory=lambda: defaultdict(dict)
+    )
+    unary_participations: Dict[str, Set[str]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
 
-        # get or create the per-activity map
-        rels = self.relations.setdefault(activity, {})
-        key: Tuple[str, str] = (source, target)
-        # add or update the relation
-        rels[key] = card
+    def add_relation(self, activity: str, source: str, target: str, card: Cardinality):
+        a, b = sorted([source, target])
+        key = (a, b)
+        self.activities.add(activity)
+        self.object_types.update([a, b])
+        self.relations[activity][key] = card
+
+    def add_unary_participation(self, activity: str, obj_type: str):
+        self.activities.add(activity)
+        self.object_types.add(obj_type)
+        self.unary_participations[activity].add(obj_type)
 
     def get_activities(self) -> Set[str]:
-        """All activity names under which we've recorded relations."""
-        return set(self.relations.keys())
+        return self.activities
 
     def get_relations(self, activity: str) -> Dict[Tuple[str, str], Cardinality]:
-        """The (source→target)->card map for one activity."""
         return self.relations.get(activity, {})
 
-    def filter_by_object_types(self, object_types: Set[str]) -> 'ActivityERDiagram':
-        new_diagram = ActivityERDiagram()
-        for activity, rels in self.relations.items():
-            for (source, target), card in rels.items():
-                if source in object_types and target in object_types:
-                    new_diagram.add_relation(activity, source, target, card)
-        return new_diagram
+    def get_unary_participation(self, activity: str) -> Set[str]:
+        return self.unary_participations.get(activity, set())
 
-    def __repr__(self):
-        aer_dict = {
-            activity: {
-                (source, target): cardinality.name
-                for (source, target), cardinality in rels.items()
-            }
-            for activity, rels in self.relations.items()
-        }
-        return str(aer_dict)
+    def get_unary_participations(self) -> Dict[str, Set[str]]:
+        return self.unary_participations
 
     def __str__(self):
-        lines = [f"ActivityERDiagram({len(self.relations)} activities"]
+        lines = ["ActivityERDiagram:"]
         for act, rels in self.relations.items():
-            lines.append(f"\nActivity: {act}")
-            for (s, t), c in rels.items():
-                lines.append(f"  {s} → {t} : {c.name}")
+            for (src, tgt), card in rels.items():
+                lines.append(f"{act}: {src} → {tgt} [{card.name}]")
+        for act, unary in self.unary_participations.items():
+            for ot in unary:
+                lines.append(f"{act}: {ot} (unary)")
         return "\n".join(lines)
+
+    def __repr__(self):
+        return (
+            f"ActivityERDiagram(activities={sorted(self.activities)}, "
+            f"object_types={sorted(self.object_types)}, "
+            f"relations={dict(self.relations)}, "
+            f"unary_participation={dict(self.unary_participations)})"
+        )
