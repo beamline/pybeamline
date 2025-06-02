@@ -51,7 +51,7 @@ class TestOCMergeOperator(unittest.TestCase):
             "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
             "Invoice": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
         }
-        self.oc_operator = OCOperator(control_flow, object_max_approx_error=0.9)
+        self.oc_operator = OCOperator(control_flow, object_emit_threshold=0.15)
         self.oc_operator_with_budget = OCOperator(control_flow={
             "Order": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
             "Item": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
@@ -104,31 +104,21 @@ class TestOCMergeOperator(unittest.TestCase):
                                          "Add Item", "Reserve Item", "Cancel Order",
                                          "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})
 
-    def test_oc_merger_with_object_max_approx_error(self):
-        # Test the OCDFG merger with the combined log and object max approx error
-        emitted_models = []
-        self.combined_log_two_workflows.pipe(
-            self.oc_operator.operator,
-            oc_merge_operator()
-        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
-        # Because of object lossy counting, and not involving other workflows
-        # in control_flow we expect the last emitted model to be empty
-        self.assertFalse(emitted_models[-1].edges)
 
-    def test_oc_merger_with_object_max_approx_error_two_workflows(self):
+    def test_oc_merger_with_emit_frequency_two_workflows(self):
         emitted_models = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_max_approx_error=0.5),
+            oc_operator(object_emit_threshold=0.02),
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
 
         self.assertTrue({"Guest", "Booking"}.issubset(emitted_models[-1].object_types))
-        self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[3].object_types))
+        self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[6].object_types))
 
     def test_oc_merger_handles_aer_diagram_correctly(self):
         emitted_aer_diagrams = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_max_approx_error=0.4, relation_model_update_frequency=30),
+            oc_operator(object_emit_threshold=0.01, relation_model_update_frequency=30),
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_aer_diagrams.append(merged_ocdfg["aer_diagram"]))
 

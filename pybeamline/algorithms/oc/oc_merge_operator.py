@@ -43,7 +43,7 @@ class OCMergeOperator:
         elif msg["command"] == Command.DEREGISTER:
             self._registered_object_types.discard(obj_type)
 
-    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]] | None:
+    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]]:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
         if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):

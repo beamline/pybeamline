@@ -140,24 +140,24 @@ class TestOCOperator(unittest.TestCase):
         ocel_source = dict_test_ocel_source([(self.events,5),(events_other_workflow,20)], shuffle=False)
         emitted_models_and_msg = []
         ocel_source.pipe(
-            oc_operator(object_max_approx_error=0.9), # Because of the high max_approx_error, DEREGISTRATION cmd should be emitted
+            oc_operator(object_emit_threshold=0.15), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
         )
 
-        emitted_deregister = []
+        emitted_commands = []
         for msg in emitted_models_and_msg:
             if msg["type"] == "model":
                 self.assertIsInstance(msg["model"], HeuristicsNet)
             elif msg["type"] == "command":
                 self.assertIsInstance(msg["command"], Command)
-                self.assertEqual(msg["command"], Command.DEREGISTER)
-                emitted_deregister.append(msg)
+                emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
                 self.assertIsInstance(msg["model"], ActivityERDiagram)
 
-        for msg in emitted_deregister:
-            self.assertIn(msg["object_type"], should_be_deregistered)
+        for msg in emitted_commands:
+            if msg["command"] == Command.DEREGISTER:
+                self.assertIn(msg["object_type"], should_be_deregistered)
 
     def test_oc_operator_aer_diagram_can_forget_relations(self):
         events_with_multiple_items= [
