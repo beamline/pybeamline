@@ -9,6 +9,8 @@ omit =
     *pybeamline/utils/dfg_to_graphviz.py*
     *pybeamline/utils/ocdfg_to_graphviz.py*
     *pybeamline/utils/visualizer.py*
+    *pybeamline/mappers*
+    *pybeamline/filters*
 
 [report]
 exclude_lines =

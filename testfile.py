@@ -1,12 +1,11 @@
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
-from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
-from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
+
 
 test_events_phaseflow = [
     {"activity": "Register Customer", "objects": {"Customer": ["c1"]}},
@@ -46,7 +45,7 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 20)], shuffle=False)
+combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
 #combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
@@ -96,10 +95,9 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_operator(control_flow=control_flow,object_max_approx_error=0.01),
-    #ops.do_action(print),
+    oc_operator(object_emit_threshold=0.05),
     oc_merge_operator(),
-    #ops.do_action(print),
+    ops.do_action(print),
 ).subscribe()#lambda x: append_emitted(x))
 
 

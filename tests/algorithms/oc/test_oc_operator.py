@@ -2,7 +2,7 @@ import unittest
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting_budget import heuristics_miner_lossy_counting_budget
-from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
+from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
