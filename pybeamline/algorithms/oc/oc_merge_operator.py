@@ -27,7 +27,6 @@ class OCMergeOperator:
     """
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
-        self._last_emit: Optional[OCDFG] = None
         self._aer_diagram: Optional[ActivityERDiagram] = None
 
 
