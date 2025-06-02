@@ -24,6 +24,9 @@ class OCMergeOperator:
     Attributes:
         _obj_dfg_repo (Dict[str, HeuristicsNet]):
             Maps object type -> its current DFG model.
+        _aer_diagram (Optional[ActivityERDiagram]):
+            The latest ActivityERDiagram, which is updated with the latest relations
+            and unary participations from the incoming messages.
     """
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
