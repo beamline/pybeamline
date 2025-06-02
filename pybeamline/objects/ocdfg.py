@@ -1,5 +1,8 @@
+from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Dict, Tuple, Set, Any
 
+@dataclass
 class OCDFG:
     """
         Object-Centric Directly-Follows Graph (OCDFG) model.
@@ -28,37 +31,32 @@ class OCDFG:
             add_end_activity(activity, object_type):
                 Declares an activity as an end node for a specific object type.
         Note:
-        This implementation is a streaming-compatible adaptation of the OCDFG concept,
-        focused on object-type-specific DFGs. It diverges from the formal definition
-        in Berti & van der Aalst (2018) by tracking frequency-based control flow
+        This implementation is a streaming-compatible adaptation of the OCDFG concept. It diverges from the formal definition
+        in Berti & van der Aalst (2018) by tracking lossy counting-based control flow
         relationships grouped by object type, rather than directly constructing
-        event-object-projected graphs.
+        event-object-projected graphs in an Object-Centric Event Log (OCEL).
         """
-    def __init__(self):
-        self.activities: Set[str] = set()
-        self.object_types: Set[str] = set()
-        self.edges: Dict[str, Dict[Tuple[str,str], int]] = {} # "Customer": (activity1, activity2): frequency
-        self.start_activities: Dict[str, Set[str]] = {} # "Customer": {"Create Customer Order"}
-        self.end_activities: Dict[str, Set[str]] = {}   # "Customer": {"Recieve Invoice"}}
+
+    activities: Set[str] = field(default_factory=set)
+    object_types: Set[str] = field(default_factory=set)
+
+    edges: Dict[str, Dict[Tuple[str,str], int]] = field(
+    default_factory=lambda: defaultdict(dict)
+    )
+    start_activities: Dict[str, Set[str]] = field(
+    default_factory=lambda: defaultdict(set)
+    )
+    end_activities: Dict[str, Set[str]] = field(
+    default_factory=lambda: defaultdict(set)
+    )
 
     def add_edge(self, source: str, object_type: str, target: str, frequency: int):
+        # Record the activity and object type
         self.activities.update([source, target])
         self.object_types.add(object_type)
 
-        if object_type not in self.edges:
-            self.edges[object_type] = {}
-
+        # Update the edge frequency
         self.edges[object_type][(source, target)] = frequency
-
-    def add_start_activity(self, activity: str, object_type: str):
-        if object_type not in self.start_activities:
-            self.start_activities[object_type] = set()
-        self.start_activities[object_type].add(activity)
-
-    def add_end_activity(self, activity: str, object_type: str):
-        if object_type not in self.end_activities:
-            self.end_activities[object_type] = set()
-        self.end_activities[object_type].add(activity)
 
     def __str__(self):
         lines = ["OCDFG:"]
@@ -68,3 +66,13 @@ class OCDFG:
             print(f"Start activities for {obj_type}: {self.start_activities.get(obj_type, set())}")
             print(f"End activities for {obj_type}: {self.end_activities.get(obj_type, set())}")
         return "\n".join(lines)
+
+    def __repr__(self):
+        return (
+            f"OCDFG(activities={sorted(self.activities)}, "
+            f"object_types={sorted(self.object_types)}, "
+            f"edges={dict(self.edges)}, "
+            f"start_activities={dict(self.start_activities)}, "
+            f"end_activities={dict(self.end_activities)})"
+        )
+

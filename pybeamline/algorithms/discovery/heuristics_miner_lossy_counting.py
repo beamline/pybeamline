@@ -1,12 +1,12 @@
 import math
 from pm4py.algo.discovery.heuristics.variants.classic import calculate as compute_dfg
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import just, empty, throw
+from reactivex import just, empty, throw, from_iterable, Observable
 from reactivex import operators as ops
 from reactivex import Observable
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
-from typing import Callable
+from typing import Callable, Union
 from pybeamline.boevent import BOEvent
 
 
@@ -20,12 +20,12 @@ def heuristics_miner_lossy_counting(
         dependency_threshold=dependency_threshold,
         and_threshold=and_threshold)
 
+
     def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
         if isinstance(event, BOEvent):
             # Verify that the event is flattened
             if len(event.get_object_ids()) != 1:
                 raise ValueError("BOEvent should be flattened before supplied to miner")
-
             # Wrapping BOEvent into BEvent
             trace_name = event.get_object_ids()[0]
             b_event = BEvent(

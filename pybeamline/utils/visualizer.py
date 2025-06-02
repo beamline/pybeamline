@@ -1,20 +1,28 @@
 import os
-import webbrowser
 from PIL import Image
-from attr import attributes
-from graphviz import Digraph
+from graphviz import Digraph, Graph
 import random
+from graphviz import Graph
+
+from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
-from pybeamline.utils.object_relation_tracker import ObjectRelationTracker
 
 class Visualizer:
     def __init__(self):
         self.object_type_colors = {}
         self.counter = 0
-        self.snapshots_dfm = []
-        self.snapshots_uml = []
+        self.snapshots_ocdfg = []
+        self.snapshots_relation = []
         self.current_index = 0
         self.snapshot_dir = os.path.join(os.getcwd(), "snapshots")
+
+        if not os.path.exists(self.snapshot_dir):
+            os.makedirs(self.snapshot_dir)
+
+        # Clear previous snapshots
+        for file in os.listdir(self.snapshot_dir):
+            if file.endswith(".png"):
+                os.remove(os.path.join(self.snapshot_dir, file))
 
     def _get_color(self, obj_type: str):
         if obj_type not in self.object_type_colors:
@@ -54,86 +62,132 @@ class Visualizer:
 
         return dot
 
-    def draw_uml(self, uml: ObjectRelationTracker, size=(1000, 700)) -> Digraph:
-        """
-        Draws the UML-style diagram of object relations and cardinalities.
+    def save(self, ocdfg: OCDFG):
+        ocdfg_dot = self.draw_ocdfg(ocdfg)
+        # Save ocdfg
+        ocdfg_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
 
-        :param uml: ObjectRelationTracker instance
-        :param size: Size of the UML diagram (width, height)
-        :return: Graphviz Digraph object
-        """
-        dot = Digraph(format="png")
-        dot.attr(rankdir='BT', size=f"{size[0] / 100},{size[1] / 100}", dpi="150")  # Fixed size
-
-        # Draw object type nodes with attributes and activities
-        for obj_type, node in uml.nodes.items():
-            color = self._get_color(obj_type)
-            attributes = "\\l".join(sorted(node.attributes)) if node.attributes else ""
-            activities = "\\l".join(sorted(node.activities)) if node.activities else ""
-
-            # Separate sections for attributes and activities in the UML node
-            label = f"{{ {obj_type} | + Attributes:\\l{attributes}\\l | + Activities:\\l{activities}\\l }}"
-
-            # Create the UML node with the specified label and color
-            dot.node(
-                obj_type,
-                label=label,
-                shape="record",
-                style="filled",
-                fillcolor="#e1e1e1",  # Background color white for contrast
-                color=color,
-            )
-
-        # Draw relations with cardinalities
-        for obj_type, node in uml.nodes.items():
-            for target_type, cardinality in node.get_cardinalities().items():
-                dot.edge(obj_type, target_type, label=cardinality.value)
-
-        return dot
-
-    def save(self, ocdfg: OCDFG, uml: ObjectRelationTracker):
-        dfm_dot = self.draw_ocdfg(ocdfg)
-        #uml_dot = self.draw_uml(uml)
-
-        # Save both DFM and UML
-        dfm_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
-        #uml_path = os.path.join(self.snapshot_dir, f"uml_snapshot_{self.counter}")
-
-        dfm_dot.render(dfm_path, cleanup=True, format="png")
-        #uml_dot.render(uml_path, cleanup=True, format="png")
-
-        self.snapshots_dfm.append(dfm_path)
-        #self.snapshots_uml.append(uml_path)
+        ocdfg_dot.render(ocdfg_path, cleanup=True, format="png")
+        self.snapshots_ocdfg.append(ocdfg_path)
         self.counter += 1
 
-    def generate_side_by_side_gif(self, out_file="dfm_uml_evolution.gif", duration=1500, size=(2500, 1200)):
-        if not self.snapshots_dfm or not self.snapshots_uml:
-            print("No snapshots to include in GIF.")
+    def draw_aer_diagram(self, model: ActivityERDiagram, max_activities_per_column=5) -> Graph:
+        dot = Graph(name="ObjectCentricRelations", format="png")
+        dot.attr(compound="true", fontsize="14")
+
+        col_idx = 0
+        act_count = 0
+
+        # Collect all activities (union of relations and unary participation)
+        all_activities = set(model.relations.keys()) | set(model.unary_participations.keys())
+
+        for idx, activity_name in enumerate(sorted(all_activities)):
+            # Wrap to the next column if needed
+            if act_count >= max_activities_per_column:
+                col_idx += 1
+                act_count = 0
+            act_count += 1
+
+            # Start a cluster for the activity
+            with dot.subgraph(name=f"cluster_col_{col_idx}_{idx}") as sub:
+                sub.attr(
+                    label=activity_name,
+                    style="dashed",
+                    rank="same",
+                    fontsize="16"
+                )
+
+                # Collect object types from relations
+                obj_types = set()
+                if activity_name in model.relations:
+                    edges = model.relations[activity_name]
+                    obj_types |= {t for (s, t) in edges.keys()} | {s for (s, t) in edges.keys()}
+                else:
+                    edges = {}
+
+                # Add unary participation nodes
+                unary_nodes = model.unary_participations.get(activity_name, set())
+                obj_types |= unary_nodes
+
+                # Draw nodes
+                for obj in sorted(obj_types):
+                    node_id = f"{activity_name}__{obj}"
+                    sub.node(node_id, label=obj, shape="ellipse")
+
+                # Draw binary edges
+                for (src, tgt), card in edges.items():
+                    src_id = f"{activity_name}__{src}"
+                    tgt_id = f"{activity_name}__{tgt}"
+                    sub.edge(
+                        src_id,
+                        tgt_id,
+                        label=card.value,
+                        fontname="Courier",
+                        fontsize="20"
+                    )
+
+        # Set global graph direction
+        dot.attr(rankdir="LR", nodesep="1.0", ranksep="1.0")
+        return dot
+
+    def save_aer_diagram(self, relation_model: ActivityERDiagram):
+        relation_dot = self.draw_aer_diagram(relation_model)
+        relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
+
+        relation_dot.render(relation_path, cleanup=True, format="png")
+        self.snapshots_relation.append(relation_path)
+        self.counter += 1
+
+    def generate_ocdfg_gif(self, out_file="ocdfg_evolution.gif", duration=1000):
+        if not self.snapshots_ocdfg:
+            print("No OCDFG snapshots to include in GIF.")
             return
 
-        combined_images = []
+        images = [Image.open(path + ".png") for path in self.snapshots_ocdfg]
+        canvas_size = self._get_max_canvas_size(images)
 
-        for dfm_img_path, uml_img_path in zip(self.snapshots_dfm, self.snapshots_uml):
-            dfm_img = Image.open(dfm_img_path+".png")
-            uml_img = Image.open(uml_img_path+".png")
-
-            # Create a combined image
-            combined_width = 1200
-            combined_height = 1200
-            combined = Image.new("RGB", (combined_width, combined_height), (255, 255, 255))
-
-            # Paste the two images side by side
-            combined.paste(dfm_img, (0, 0))
-            combined.paste(uml_img, (dfm_img.width, 0))
-
-            combined_images.append(combined)
-
-        # Save the combined images as a GIF
-        combined_images[0].save(
+        padded_images = [self._center_on_canvas(img, canvas_size) for img in images]
+        padded_images[0].save(
             out_file,
             save_all=True,
-            append_images=combined_images[1:],
+            append_images=padded_images[1:],
             duration=duration,
             loop=0
         )
         print(f"[GIF] Saved to {out_file}")
+
+    def generate_relation_gif(self, out_file="relation_evolution.gif", duration=1500):
+        if not self.snapshots_relation:
+            print("No relation snapshots to include in GIF.")
+            return
+
+        images = [Image.open(path + ".png") for path in self.snapshots_relation]
+        canvas_size = self._get_max_canvas_size(images)
+
+        padded_images = [self._center_on_canvas(img, canvas_size) for img in images]
+        padded_images[0].save(
+            out_file,
+            save_all=True,
+            append_images=padded_images[1:],
+            duration=duration,
+            loop=0
+        )
+        print(f"[GIF] Saved to {out_file}")
+
+    def _get_max_canvas_size(self, images):
+        max_width = max(img.width for img in images)
+        max_height = max(img.height for img in images)
+        return (max_width, max_height)
+
+    def _center_on_canvas(self, img, canvas_size):
+        canvas = Image.new("RGB", canvas_size, (255, 255, 255))
+        x_offset = (canvas_size[0] - img.width) // 2
+        y_offset = (canvas_size[1] - img.height) // 2
+        canvas.paste(img, (x_offset, y_offset))
+        return canvas
+
+    def _center_vertically(self, img, target_height):
+        canvas = Image.new("RGB", (img.width, target_height), (255, 255, 255))
+        y_offset = (target_height - img.height) // 2
+        canvas.paste(img, (0, y_offset))
+        return canvas
