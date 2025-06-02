@@ -70,7 +70,6 @@ def jaccard_similarity(model: set, ref_model: set) -> float:
 
 emitted_ocdfgs = []
 def append_ocdfg(ocdfg: OCDFG):
-    global emitted_ocdfgs
     emitted_ocdfgs.append(ocdfg)
 
 
