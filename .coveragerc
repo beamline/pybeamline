@@ -5,12 +5,22 @@ omit =
     */tests/*
     */__init__.py
     */setup.py
-    *pybeamline/algorithms/conformance/*
-    *pybeamline/utils/dfg_to_graphviz.py*
-    *pybeamline/utils/ocdfg_to_graphviz.py*
-    *pybeamline/utils/visualizer.py*
-    *pybeamline/mappers*
-    *pybeamline/filters*
+     pybeamline/algorithms/conformance/*
+     pybeamline/algorithms/simple*
+     pybeamline/algorithms/lambda*
+     pybeamline/utils/dfg_to_graphviz.py
+     pybeamline/utils/ocdfg_to_graphviz.py
+     pybeamline/utils/visualizer.py
+     pybeamline/mappers/*
+     pybeamline/filters/*
+     pybeamline/sources/mqtt*
+     pybeamline/sources/real*
+     pybeamline/sources/string*
+     pybeamline/sources/xes*
+
+
+
+
 
 [report]
 exclude_lines =

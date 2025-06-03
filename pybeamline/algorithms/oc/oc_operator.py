@@ -2,7 +2,7 @@ from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
 from reactivex import operators as ops, Observable, merge, empty, just, from_iterable
 from reactivex.subject import Subject
 
-from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import \
+from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
     activity_object_relations_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
