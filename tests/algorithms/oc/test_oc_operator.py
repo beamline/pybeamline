@@ -140,7 +140,7 @@ class TestOCOperator(unittest.TestCase):
         ocel_source = dict_test_ocel_source([(self.events,5),(events_other_workflow,20)], shuffle=False)
         emitted_models_and_msg = []
         ocel_source.pipe(
-            oc_operator(object_emit_threshold=0.15), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
+            oc_operator(frequency_threshold=0.15), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
         )
@@ -174,7 +174,7 @@ class TestOCOperator(unittest.TestCase):
         ocel_source = dict_test_ocel_source([(events_with_multiple_items, 10), (events_with_single_item_but_multiple_orders,10)], shuffle=False)
         emitted_aer_models = []
         ocel_source.pipe(
-            oc_operator(relation_max_approx_error=0.5, relation_model_update_frequency=30),  # High max_approx_error to trigger forgetting
+            oc_operator(aer_model_max_approx_error=0.5, aer_model_update_frequency=30),  # High max_approx_error to trigger forgetting
             ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], ActivityERDiagram)),
         ).subscribe(
             on_next=lambda x: emitted_aer_models.append(x),

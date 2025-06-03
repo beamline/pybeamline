@@ -6,7 +6,7 @@ from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.utils.cardinality import infer_cardinality, Cardinality
 
 
-def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None) -> Callable[
+def activity_object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None) -> Callable[
     [Observable[BOEvent]], Observable[ActivityERDiagram]]:
     """
     Object Relationship Miner using a lossy counting approach.
@@ -15,7 +15,7 @@ def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_
     :param max_approx_error: Maximum approximation error for the lossy counting on objects
     :return: Function to process BOEvent and return a dictionary with the model
     """
-    obj_rel = ObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
+    obj_rel = ActivityObjectRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
 
     def miner(event: Union[BOEvent,dict]) -> Observable[ActivityERDiagram]:
         obj_rel.ingest_event(event)
@@ -27,7 +27,7 @@ def object_relations_miner_lossy_counting(model_update_frequency=10, max_approx_
     return ops.flat_map(miner)
 
 
-class ObjectRelationMinerLossyCounting:
+class ActivityObjectRelationMinerLossyCounting:
     def __init__(self, max_approx_error: float = 0.001, control_flow: Optional[Set[str]] = None):
         self.__control_flow: Optional[Set[str]] = control_flow
         self.__relation_tracking: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, Tuple[int, int]]]] = {} # {# activity: { (type1, type2): {Cardinality: (frequency, bucket)} }}

@@ -1,10 +1,9 @@
 from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
-from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable, merge, empty, just, from_iterable
-from reactivex.abc import DisposableBase
 from reactivex.subject import Subject
 
-from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import object_relations_miner_lossy_counting
+from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import \
+    activity_object_relations_miner_lossy_counting
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.utils.commands import create_command, Command
@@ -20,13 +19,26 @@ class StreamMiner(Protocol):
 
 def oc_operator(
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-    object_emit_threshold: float = 0.05,
-    relation_model_update_frequency: int = 30,
-    relation_max_approx_error: float = 0.01
+    frequency_threshold: float = 0.05,
+    aer_model_update_frequency: int = 30,
+    aer_model_max_approx_error: float = 0.01
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
-        Factory function for creating an object-centric process mining operator.
-        Validates control flow dictionary if supplied and instantiates the OCOperator.
+    Factory function to create a configured OCOperator.
+    :param control_flow:
+        Optional dictionary mapping object types (str) to miner factory callables (i.e., `Callable[[], StreamMiner]`).
+        If omitted, the operator dynamically registers miners for object types on-the-fly.
+    :param frequency_threshold:
+        A float (e.g., 0.05) specifying the minimum relative frequency of obj-type miner outputs required to register an object type.
+        If the proportion of emitted models for an object type falls below this threshold, it will be deregistered.
+    :param aer_model_update_frequency:
+        Number of events between emissions of updated Activity-Entity Relationship (AER) diagrams.
+    :param aer_model_max_approx_error:
+        Maximum approximation error used for lossy counting in the AER miner.
+        Smaller values reduce approximation error but increase memory usage.
+    :return:
+        A callable that takes an `Observable[BOEvent]` as input and returns an `Observable[dict]` containing
+        emitted models, AER diagrams, and control commands such as register/deregister.
     """
     if control_flow is not None and not isinstance(control_flow, dict):
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
@@ -36,21 +48,19 @@ def oc_operator(
 
     return OCOperator(
         control_flow=control_flow or {},
-        object_emit_threshold=object_emit_threshold,
-        relation_model_update_frequency=relation_model_update_frequency,
-        relation_max_approx_error=relation_max_approx_error
+        frequency_threshold=frequency_threshold,
+        aer_model_update_frequency=aer_model_update_frequency,
+        aer_model_max_approx_error=aer_model_max_approx_error
     ).operator
 
 
 class OCOperator:
     """
-    Object-Centric Operator for reactive stream processing of BOEvents.
-    Manages per-object-type miner streams by the use of object-lossy-counting on dynamically or statically chosen object types.
+    Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
+    Dynamically registers/deregisters miners based on model emission frequencies.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], object_emit_threshold: float = 0.05,relation_model_update_frequency: int = 30, relation_max_approx_error: float = 0.01):
-        self.__relation_model_update_frequency = relation_model_update_frequency
-        self.__relation_max_approx_error = relation_max_approx_error
-        self.__object_emit_threshold = int(1/object_emit_threshold)
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], frequency_threshold: float = 0.05,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
+        self.__frequency_threshold = int(1/frequency_threshold)
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
 
@@ -64,14 +74,16 @@ class OCOperator:
 
         for obj_type, miner in control_flow.items():
             self._register_stream(obj_type, miner())
-        self._register_aer_stream()
+        self._register_aer_stream(aer_model_update_frequency, aer_model_max_approx_error)
 
-    def _register_aer_stream(self):
+    def _register_aer_stream(self, model_update_frequency, max_approx_error: float):
         subject = Subject[BOEvent]()
         self.__miner_subjects["AERStream"] = subject
-        miner_op = object_relations_miner_lossy_counting(model_update_frequency=self.__relation_model_update_frequency,
-                                                        control_flow=self.__control_flow,
-                                                        max_approx_error=self.__relation_max_approx_error)
+        miner_op = activity_object_relations_miner_lossy_counting(
+            model_update_frequency=model_update_frequency,
+            control_flow=self.__control_flow,
+            max_approx_error=max_approx_error
+        )
         aer_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
@@ -130,42 +142,47 @@ class OCOperator:
                 continue
             self.__miner_subjects[obj_type].on_next(flat_event)
 
-    def _model_tracking(self, event: dict) -> Observable[dict]:
+    def _evaluate_model_frequency(self, event: dict) -> Observable[dict]:
         if event.get("type") != "model":
             return just(event)
+
         obj_type = event["object_type"]
+        self._increment_obj_type_model_count(obj_type)
+
+        commands_and_model = []
+
+        # Add commands before the model
+        register_cmds = self._evaluate_registration(obj_type)
+        if register_cmds:
+            commands_and_model.extend(register_cmds)
+        dereg_cmds = self._evaluate_deregistration_all()
+        if dereg_cmds:
+            commands_and_model.extend(dereg_cmds)
+        # Append the actual model event last
+        commands_and_model.append(event)
+        return from_iterable(commands_and_model)
+
+    def _increment_obj_type_model_count(self, obj_type: str):
         self._emitted_models[obj_type] = self._emitted_models.get(obj_type, 0) + 1
         self._total_emitted_models += 1
-        count = self._emitted_models[obj_type]
+
+    def _evaluate_registration(self, obj_type: str):
+        count = self._emitted_models.get(obj_type, 0)
         total = self._total_emitted_models
-
-        results = []
-
-        # Register if above threshold
-        if self.__object_emit_threshold * count >= total and obj_type not in self._registered_object_types:
+        if self.__frequency_threshold * count >= total and obj_type not in self._registered_object_types:
             self._registered_object_types.add(obj_type)
-            results.append(create_command(Command.REGISTER, obj_type))
+            return [create_command(Command.REGISTER, obj_type)]
 
-        # Check all *currently* registered types to see if they should be deregistered
-        for registered_obj in list(self._registered_object_types):
-            reg_count = self._emitted_models.get(registered_obj, 0)
-            if self.__object_emit_threshold * reg_count < total:
-                self._registered_object_types.remove(registered_obj)
-                results.append(create_command(Command.DEREGISTER, registered_obj))
-        results.append(event)
-        return from_iterable(results)
+    def _evaluate_deregistration_all(self):
+        total = self._total_emitted_models
+        commands = []
+        for obj_type in list(self._registered_object_types):
+            count = self._emitted_models.get(obj_type, 0)
+            if self.__frequency_threshold * count < total:
+                self._registered_object_types.remove(obj_type)
+                commands.append(create_command(Command.DEREGISTER, obj_type))
+        return commands
 
-    def _build_operator_pipeline(self, stream: Observable[BOEvent]) -> Observable[dict]:
-        """
-        Main reactive pipeline: routes events, applies lossy counting, and merges miner outputs.
-        """
-        return stream.pipe(
-            ops.do_action(self._route_to_miner),
-            ops.filter(lambda e: not isinstance(e, BOEvent)),
-            ops.merge(self.__output_subject),
-            ops.flat_map(self._model_tracking),
-            #ops.do_action(print)
-        )
 
     def get_mode(self) -> bool:
         """
@@ -175,4 +192,11 @@ class OCOperator:
 
     @property
     def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:
-        return self._build_operator_pipeline
+        def pipeline(stream: Observable[BOEvent]) -> Observable[dict]:
+            return stream.pipe(
+                ops.do_action(self._route_to_miner),
+                ops.filter(lambda e: not isinstance(e, BOEvent)),
+                ops.merge(self.__output_subject),
+                ops.flat_map(self._evaluate_model_frequency),
+            )
+        return pipeline

@@ -95,9 +95,9 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_operator(object_emit_threshold=0.05),
+    oc_operator(frequency_threshold=0.02),
     oc_merge_operator(),
-    ops.do_action(print),
+    #ops.do_action(print),
 ).subscribe()#lambda x: append_emitted(x))
 
 

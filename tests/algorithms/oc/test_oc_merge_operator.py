@@ -51,7 +51,7 @@ class TestOCMergeOperator(unittest.TestCase):
             "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
             "Invoice": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
         }
-        self.oc_operator = OCOperator(control_flow, object_emit_threshold=0.15)
+        self.oc_operator = OCOperator(control_flow, frequency_threshold=0.15)
         self.oc_operator_with_budget = OCOperator(control_flow={
             "Order": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
             "Item": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
@@ -108,7 +108,7 @@ class TestOCMergeOperator(unittest.TestCase):
     def test_oc_merger_with_emit_frequency_two_workflows(self):
         emitted_models = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_emit_threshold=0.02),
+            oc_operator(frequency_threshold=0.02),
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
 
@@ -118,16 +118,17 @@ class TestOCMergeOperator(unittest.TestCase):
     def test_oc_merger_handles_aer_diagram_correctly(self):
         emitted_aer_diagrams = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_emit_threshold=0.01, relation_model_update_frequency=30),
-            oc_merge_operator()
+            oc_operator(aer_model_max_approx_error=0.01, aer_model_update_frequency=30),
+            oc_merge_operator(),
         ).subscribe(lambda merged_ocdfg: emitted_aer_diagrams.append(merged_ocdfg["aer_diagram"]))
 
         # Verify that workflow 1 are in the beginning of the emitted AER diagrams
+
         self.assertTrue(len(emitted_aer_diagrams) > 0)
+        
         # Get removes all entries that are empty
         emitted_aer_diagrams = [aer for aer in emitted_aer_diagrams if aer.relations or aer.unary_participations]
         self.assertIn("Register Customer", emitted_aer_diagrams[0].get_unary_participations())
         self.assertTrue({"Create Order", "Add Item", "Reserve Item", "Register Customer", "Cancel Order"}.issubset(emitted_aer_diagrams[0].get_activities()))
         self.assertTrue({"Create Booking", "Check In", "Check Out", "Register Guest", "Reserve Room"}.issubset(emitted_aer_diagrams[-1].get_activities()))
-
 
