@@ -97,18 +97,15 @@ class OCMergeOperator:
         for obj_type, dfg_model in self._obj_dfg_repo.items():
             if obj_type not in self._registered_object_types:
                 continue
-            self_loops = set()
             sources, targets = set(), set()
             for (a1, a2), freq in dfg_model.dfg.items():
                 ocdfg.add_edge(a1, obj_type, a2, freq)
-                if a1 == a2:
-                    self_loops.add(a1)
-                sources.add(a1)
-                targets.add(a2)
+                if a1 != a2:
+                    sources.add(a1)
+                    targets.add(a2)
 
-            isolated_self_loops = self_loops - sources - targets
-            start_activities = (sources - targets) | isolated_self_loops
-            end_activities = (targets - sources) | isolated_self_loops
+            start_activities = (sources - targets)
+            end_activities = (targets - sources)
 
             ocdfg.start_activities[obj_type] = start_activities
             ocdfg.end_activities[obj_type] = end_activities

@@ -41,8 +41,6 @@ class ActivityObjectRelationMinerLossyCounting:
         current_bucket = int(self.__observed_events / self.__bucket_width)
 
         obj_types = [t for t in omap.keys() if not self.__control_flow or t in self.__control_flow]
-        if not obj_types:
-            return
 
         if activity not in self.__unary_tracking:
             self.__unary_tracking[activity] = {}
@@ -126,8 +124,6 @@ class ActivityObjectRelationMinerLossyCounting:
         aer_diagram = ActivityERDiagram()
         for activity, rel_map in self.__relation_tracking.items():
             for (obj1, obj2), card_map in rel_map.items():
-                if not card_map:
-                    continue  # skip empty entries
 
                 # Find the most frequent cardinality for this (activity, relation) pair
                 most_common_card = max(card_map.items(), key=lambda kv: kv[1][0])[0]

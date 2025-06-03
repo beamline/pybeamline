@@ -26,6 +26,7 @@ class TestOCMergeOperator(unittest.TestCase):
             {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
             {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
             {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
+            {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
             {"activity": "Reserve Item", "objects": {"Item": ["i2"]}},
             {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
         ]
@@ -114,6 +115,12 @@ class TestOCMergeOperator(unittest.TestCase):
 
         self.assertTrue({"Guest", "Booking"}.issubset(emitted_models[-1].object_types))
         self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[6].object_types))
+        self.assertIn("OCDFG:", emitted_models[6].__str__())
+        repr_str = repr(emitted_models[-1])
+        self.assertIn("OCDFG", repr_str)
+        self.assertIn("activities", repr_str)
+        self.assertIn('Guest', repr_str)
+        self.assertIn("edges=", repr_str)
 
     def test_oc_merger_handles_aer_diagram_correctly(self):
         emitted_aer_diagrams = []

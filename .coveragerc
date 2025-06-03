@@ -6,7 +6,7 @@ omit =
     */__init__.py
     */setup.py
      pybeamline/algorithms/conformance/*
-     pybeamline/algorithms/simple*
+     pybeamline/algorithms/dfg_miner.py
      pybeamline/algorithms/lambda*
      pybeamline/utils/dfg_to_graphviz.py
      pybeamline/utils/ocdfg_to_graphviz.py

@@ -14,7 +14,7 @@ class StreamMiner(Protocol):
     Protocol representing a callable that consumes a stream of BOEvents and emits HeuristicsNet models.
     """
     def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
-        ...
+        ... # pragma: no cover
 
 
 def oc_operator(
