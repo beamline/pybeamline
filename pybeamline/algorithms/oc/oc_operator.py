@@ -1,3 +1,4 @@
+import enum
 import math
 from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
 from reactivex import operators as ops, Observable, merge, empty, just, from_iterable
@@ -9,6 +10,10 @@ from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.utils.commands import create_command, Command
 
+class MiningStrategy(enum.Enum):
+    FREQUENCY_BASED = "frequency"
+    LOSSY_COUNTING = "lossy"
+
 
 class StreamMiner(Protocol):
     """
@@ -19,8 +24,10 @@ class StreamMiner(Protocol):
 
 
 def oc_operator(
+    strategy: MiningStrategy = MiningStrategy.FREQUENCY_BASED,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
     frequency_threshold: float = 0.05,
+    max_approx_error: float = 0.01,
     aer_model_update_frequency: int = 30,
     aer_model_max_approx_error: float = 0.01
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
@@ -48,6 +55,7 @@ def oc_operator(
             raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
 
     return OCOperator(
+        strategy=strategy,
         control_flow=control_flow or {},
         frequency_threshold=frequency_threshold,
         aer_model_update_frequency=aer_model_update_frequency,
@@ -60,13 +68,15 @@ class OCOperator:
     Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
     Dynamically registers/deregisters miners based on model emission frequencies.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], frequency_threshold: float = 0.05,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
-        self.__frequency_threshold = int(math.ceil(1 / frequency_threshold))
+    def __init__(self, strategy: MiningStrategy, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], frequency_threshold: float = 0.05, max_approx_error: float = 0.02 ,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
+        if strategy == MiningStrategy.FREQUENCY_BASED:
+            self.__frequency_threshold = int(math.ceil(1 / frequency_threshold))
+        elif strategy == MiningStrategy.LOSSY_COUNTING:
+            self.__max_approx_error = max_approx_error
+            self.__lossy_counters: Dict[str, int] = {}
+
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
-
-        print(self.__frequency_threshold)
-
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
 
