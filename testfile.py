@@ -1,6 +1,7 @@
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
@@ -46,7 +47,7 @@ test_events_phaseflow_ends_early = [
 ]
 
 #combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
-combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -94,8 +95,10 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
             significant_edge_change(ocdfg_old, ocdfg_new)
 
 
+strategy = LossyCountingStrategy(max_approx_error=0.02)
 combined_log.pipe(
-    oc_operator(frequency_threshold=0.0001),
+    oc_operator(strategy_handler=strategy),
+    ops.do_action(print),
     oc_merge_operator(),
     #ops.do_action(print),
 ).subscribe(lambda x: append_emitted(x))

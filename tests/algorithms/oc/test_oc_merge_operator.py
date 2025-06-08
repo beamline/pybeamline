@@ -4,6 +4,7 @@ from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budg
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.algorithms.oc.strategies.base import RelativeFrequencyBasedStrategy
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.algorithms.oc.oc_merge_operator import OCMergeOperator
 
@@ -52,7 +53,7 @@ class TestOCMergeOperator(unittest.TestCase):
             "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
             "Invoice": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
         }
-        self.oc_operator = OCOperator(control_flow, frequency_threshold=0.15)
+        self.oc_operator = OCOperator(strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.15), control_flow=control_flow)
         self.oc_operator_with_budget = OCOperator(control_flow={
             "Order": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
             "Item": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
@@ -109,7 +110,7 @@ class TestOCMergeOperator(unittest.TestCase):
     def test_oc_merger_with_emit_frequency_two_workflows(self):
         emitted_models = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(frequency_threshold=0.02),
+            oc_operator(strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.02)),
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
 

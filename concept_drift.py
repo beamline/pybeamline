@@ -2,7 +2,8 @@ from numpy.matlib import empty
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
-from pybeamline.algorithms.oc.oc_operator import oc_operator
+from pybeamline.algorithms.oc.oc_operator import oc_operator, MiningStrategy
+from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
 from pybeamline.objects.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
@@ -70,9 +71,9 @@ emitted_ocdfgs = []
 def append_ocdfg(ocdfg):
     emitted_ocdfgs.append(ocdfg["ocdfg"])
 from reactivex import operators as ops
-
+strategy = LossyCountingStrategy(max_approx_error=0.15)
 source.pipe(
-    oc_operator(object_emit_threshold=0.15),
+    oc_operator(strategy_handler=strategy),
     oc_merge_operator(),
     ops.do_action(print),
 ).subscribe(append_ocdfg)
