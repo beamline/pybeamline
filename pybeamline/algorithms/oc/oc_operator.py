@@ -8,7 +8,6 @@ from pybeamline.algorithms.oc.strategies.base import EmissionStrategy, \
     RelativeFrequencyBasedStrategy, LossyCountingStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
-from pybeamline.utils.commands import create_command, Command
 
 class StreamMiner(Protocol):
     """
