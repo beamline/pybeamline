@@ -45,8 +45,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
-#combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
+#combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -95,17 +95,17 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 
 combined_log.pipe(
-    oc_operator(frequency_threshold=0.02),
+    oc_operator(frequency_threshold=0.0001),
     oc_merge_operator(),
     #ops.do_action(print),
-).subscribe()#lambda x: append_emitted(x))
+).subscribe(lambda x: append_emitted(x))
 
 
 
 
 print(f"Length of emitted: {len(emitted_models)}")
 # Assert aer_diagram is in the emitted models
-
+""""
 for i, m in enumerate(emitted_models):
     aer_diagram = m.get("aer_diagram")
     if aer_diagram is not None:
@@ -114,10 +114,11 @@ for i, m in enumerate(emitted_models):
         print(f"Model {i+1} does not contain an AER diagram.")
 
 visualizer.generate_relation_gif()
-
+"""
 
 for i, m in enumerate(emitted_models):
-    visualizer.save(m["ocdfg"])
+    if i%100 == 0:
+        visualizer.save(m["ocdfg"])
 
 visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
 

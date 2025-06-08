@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
 from reactivex import operators as ops, Observable, merge, empty, just, from_iterable
 from reactivex.subject import Subject
@@ -60,9 +61,11 @@ class OCOperator:
     Dynamically registers/deregisters miners based on model emission frequencies.
     """
     def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], frequency_threshold: float = 0.05,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
-        self.__frequency_threshold = int(1/frequency_threshold)
+        self.__frequency_threshold = int(math.ceil(1 / frequency_threshold))
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
+
+        print(self.__frequency_threshold)
 
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
