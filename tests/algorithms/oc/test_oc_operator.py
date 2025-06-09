@@ -4,7 +4,8 @@ import warnings
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting_budget import heuristics_miner_lossy_counting_budget
-from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, RelativeFrequencyBasedStrategy
+from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, RelativeFrequencyBasedStrategy, \
+    SlidingWindowStrategy
 from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.objects.aer_diagram import ActivityERDiagram
@@ -227,5 +228,42 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["model"], ActivityERDiagram)
 
         for msg in emitted_commands:
+            if msg["command"] == Command.DEREGISTER:
+                self.assertIn(msg["object_type"], should_be_deregistered)
+
+    def test_oc_operator_with_strategy_sliding_window(self):
+        should_be_deregistered = [
+            "Customer", "Order", "Item", "Shipment"
+        ]
+        # Sample Dict to generate OCEL source
+        events_other_workflow = [
+            {"activity": "Register Guest", "objects": {"Guest": ["g1"]}},
+            {"activity": "Create Booking", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+            {"activity": "Reserve Room", "objects": {"Booking": ["b1"]}},
+            {"activity": "Check In", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},
+            {"activity": "Check Out", "objects": {"Guest": ["g1"], "Booking": ["b1"]}}
+        ]
+
+        ocel_source = dict_test_ocel_source([(self.events, 5), (events_other_workflow, 20)], shuffle=False)
+        emitted_models_and_msg = []
+        ocel_source.pipe(
+            oc_operator(strategy_handler=SlidingWindowStrategy(window_size=5)),
+            # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
+        ).subscribe(
+            on_next=lambda x: emitted_models_and_msg.append(x),
+        )
+
+        emitted_commands = []
+        for msg in emitted_models_and_msg:
+            if msg["type"] == "model":
+                self.assertIsInstance(msg["model"], HeuristicsNet)
+            elif msg["type"] == "command":
+                self.assertIsInstance(msg["command"], Command)
+                emitted_commands.append(msg)
+            elif msg["type"] == "aer_diagram":
+                self.assertIsInstance(msg["model"], ActivityERDiagram)
+
+        for msg in emitted_commands:
+            print(msg)
             if msg["command"] == Command.DEREGISTER:
                 self.assertIn(msg["object_type"], should_be_deregistered)

@@ -107,9 +107,9 @@ class LossyCountingStrategy(EmissionStrategy):
         commands.append(model_event)
         return from_iterable(commands)
 
-class SlidingWindowActivityStrategy(EmissionStrategy):
+class SlidingWindowStrategy(EmissionStrategy):
     """
-    Sliding Window Activity-Based Emission Strategy.
+    Sliding Window Emission Strategy.
     - Registers object types if they emit within the current window.
     - Deregisters object types if they have not emitted within the last `window_size` events.
     This is inspired by the sliding window model in stream mining.

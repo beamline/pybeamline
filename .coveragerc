@@ -6,7 +6,7 @@ omit =
     */__init__.py
     */setup.py
      pybeamline/algorithms/conformance/*
-     pybeamline/algorithms/dfg_miner.py
+     pybeamline/algorithms/discovery/dfg_miner.py
      pybeamline/algorithms/lambda*
      pybeamline/utils/dfg_to_graphviz.py
      pybeamline/utils/ocdfg_to_graphviz.py
@@ -17,6 +17,10 @@ omit =
      pybeamline/sources/real*
      pybeamline/sources/string*
      pybeamline/sources/xes*
+
+[report]
+exclude_lines =
+    pragma: no cover
 
 
 
