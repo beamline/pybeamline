@@ -5,9 +5,9 @@ from reactivex.disposable import CompositeDisposable
 from pm4py import OCEL, ocel_sort_by_additional_column, read_ocel2
 from pybeamline.boevent import BOEvent
 
-def ocel_log_source_from_file(log_path: str) -> Observable[BOEvent]:
+def ocel_log_source_from_file(log_path: str, ) -> Observable[BOEvent]:
     """
-    Loads an OCEL 2.0 JSON log from a file path and returns it as an Observable of BOEvent objects.
+    Loads an OCEL 2.0 log from a file path and returns it as an Observable of BOEvent objects.
     :param log_path: str
     :return: Observable[BOEvent]
     """

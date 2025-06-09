@@ -2,10 +2,9 @@ from numpy.matlib import empty
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
-from pybeamline.algorithms.oc.oc_operator import oc_operator
+from pybeamline.algorithms.oc.oc_operator import oc_operator, MiningStrategy
+from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
 from pybeamline.objects.ocdfg import OCDFG
-from pybeamline.algorithms.oc.oc_dfg_merge_operator import oc_dfg_merge_operator
-from pybeamline.algorithms.oc.oc_dfg_operator import oc_dfg_operator
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
@@ -26,7 +25,7 @@ test_customers = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-source = dict_test_ocel_source([(booking_flow, 10), (test_customers, 20)], shuffle=False)
+source = dict_test_ocel_source([(booking_flow, 5), (test_customers, 20)], shuffle=False)
 
 booking_flow_set = {
     ("Register Guest", "Guest", "Create Booking"),
@@ -69,13 +68,14 @@ def jaccard_similarity(model: set, ref_model: set) -> float:
     return intersection / union
 
 emitted_ocdfgs = []
-def append_ocdfg(ocdfg: OCDFG):
-    emitted_ocdfgs.append(ocdfg)
-
-
+def append_ocdfg(ocdfg):
+    emitted_ocdfgs.append(ocdfg["ocdfg"])
+from reactivex import operators as ops
+strategy = LossyCountingStrategy(max_approx_error=0.15)
 source.pipe(
-    oc_operator(object_max_approx_error=0.5),
-    oc_merge_operator()
+    oc_operator(strategy_handler=strategy),
+    oc_merge_operator(),
+    ops.do_action(print),
 ).subscribe(append_ocdfg)
 
 

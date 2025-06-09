@@ -63,8 +63,10 @@ class OCDFG:
         for obj_type, transitions in self.edges.items():
             for (src, tgt), freq in transitions.items():
                 lines.append(f"{src} --({obj_type})--> {tgt} [{freq}]")
-            print(f"Start activities for {obj_type}: {self.start_activities.get(obj_type, set())}")
-            print(f"End activities for {obj_type}: {self.end_activities.get(obj_type, set())}")
+            start = self.start_activities.get(obj_type, set())
+            end = self.end_activities.get(obj_type, set())
+            lines.append(f"Start activities for {obj_type}: {start}")
+            lines.append(f"End activities for {obj_type}: {end}")
         return "\n".join(lines)
 
     def __repr__(self):

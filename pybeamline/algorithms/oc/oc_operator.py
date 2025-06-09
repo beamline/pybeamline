@@ -1,31 +1,42 @@
-from typing import Dict, Optional, Protocol, Callable, Any, Union, Set
-from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import operators as ops, Observable, merge, empty, just
-from reactivex.abc import DisposableBase
+from typing import Dict, Optional, Protocol, Callable, Any, Union, Set, Tuple
+from reactivex import operators as ops, Observable
 from reactivex.subject import Subject
 
-from pybeamline.algorithms.discovery.object_relation_miner_lossy_counting import object_relations_miner_lossy_counting
-from pybeamline.algorithms.oc.object_lossy_counting_operator import object_lossy_counting_operator, Command
+from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
+    activity_object_relations_miner_lossy_counting
+from pybeamline.algorithms.oc.strategies.base import EmissionStrategy, \
+    RelativeFrequencyBasedStrategy, LossyCountingStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
 class StreamMiner(Protocol):
     """
-    Protocol representing a callable that consumes a stream of BOEvents and emits HeuristicsNet models.
+    Protocol representing a callable that consumes a stream of BOEvents and emits process models.
     """
     def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
-        ...
-
+        ... # pragma: no cover
 
 def oc_operator(
+    strategy_handler: Optional[EmissionStrategy] = None,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-    object_max_approx_error: float = 0.0001,
-    relation_model_update_frequency: int = 30,
-    relation_max_approx_error: float = 0.01
+    aer_model_update_frequency: int = 30,
+    aer_model_max_approx_error: float = 0.01
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
-        Factory function for creating an object-centric process mining operator.
-        Validates control flow dictionary if supplied and instantiates the OCOperator.
+    Factory function to create a configured OCOperator.
+
+    :param strategy_handler:
+    :param control_flow:
+        Optional dictionary mapping object types (str) to miner factory callables (i.e., `Callable[[], StreamMiner]`).
+        If omitted, the operator dynamically registers miners for object types on-the-fly.
+    :param aer_model_update_frequency:
+        Number of events between emissions of updated Activity-Entity Relationship (AER) diagrams.
+    :param aer_model_max_approx_error:
+        Maximum approximation error used for lossy counting in the AER miner.
+        Smaller values reduce approximation error but increase memory usage.
+    :return:
+        A callable that takes an `Observable[BOEvent]` as input and returns an `Observable[dict]` containing
+        emitted models, AER diagrams, and control commands such as register/deregister.
     """
     if control_flow is not None and not isinstance(control_flow, dict):
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
@@ -33,38 +44,43 @@ def oc_operator(
         if not callable(miner):
             raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
 
+    if strategy_handler is None:
+        strategy_handler = RelativeFrequencyBasedStrategy(0.05)
+
     return OCOperator(
+        strategy_handler=strategy_handler,
         control_flow=control_flow or {},
-        object_max_approx_error=object_max_approx_error,
-        relation_max_approx_error=relation_max_approx_error
+        aer_model_update_frequency=aer_model_update_frequency,
+        aer_model_max_approx_error=aer_model_max_approx_error
     ).operator
 
 
 class OCOperator:
     """
-    Object-Centric Operator for reactive stream processing of BOEvents.
-    Manages per-object-type miner streams by the use of object-lossy-counting on dynamically or statically chosen object types.
+    Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]], object_max_approx_error: float = 0.0001,relation_model_update_frequency: int = 30, relation_max_approx_error: float = 0.01):
-        self.__relation_model_update_frequency = relation_model_update_frequency
-        self.__relation_max_approx_error = relation_max_approx_error
-        self.__object_max_approx_error = object_max_approx_error
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None, strategy_handler: EmissionStrategy = None ,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
+        self.__strategy_handler = strategy_handler or RelativeFrequencyBasedStrategy()
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
-
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
 
         for obj_type, miner in control_flow.items():
             self._register_stream(obj_type, miner())
-        self._register_aer_stream()
+        self._register_aer_stream(aer_model_update_frequency, aer_model_max_approx_error)
 
-    def _register_aer_stream(self):
+    def _register_aer_stream(self, model_update_frequency, max_approx_error: float):
+        """
+        Register a stream for Activity-Entity Relationship (AER) diagrams using lossy counting.
+        """
         subject = Subject[BOEvent]()
         self.__miner_subjects["AERStream"] = subject
-        miner_op = object_relations_miner_lossy_counting(model_update_frequency=self.__relation_model_update_frequency,
-                                                        control_flow=self.__control_flow,
-                                                        max_approx_error=self.__relation_max_approx_error)
+        miner_op = activity_object_relations_miner_lossy_counting(
+            model_update_frequency=model_update_frequency,
+            control_flow=self.__control_flow,
+            max_approx_error=max_approx_error
+        )
         aer_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
@@ -81,7 +97,8 @@ class OCOperator:
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
-        Register a new miner stream for the given object type.
+        Register a new miner subject for the given object type.
+        If a miner is provided, it will be used; otherwise, a default miner is created.
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
@@ -123,33 +140,6 @@ class OCOperator:
                 continue
             self.__miner_subjects[obj_type].on_next(flat_event)
 
-    def _handle_deregistration_event(self, event: dict):
-        """
-        Handle deregistration events and clean up associated streams.
-        """
-        if isinstance(event, dict) and event.get("command") == Command.DEREGISTER:
-            obj_type = event.get("object_type")
-            subject = self.__miner_subjects[obj_type]
-            self.__miner_subjects.pop(obj_type, None)
-
-
-    def _build_operator_pipeline(self, stream: Observable[BOEvent]) -> Observable[dict]:
-        """
-        Main reactive pipeline: routes events, applies lossy counting, and merges miner outputs.
-        """
-        def process(event: Union[BOEvent, dict]) -> Observable[dict]:
-            if isinstance(event, BOEvent):
-                self._route_to_miner(event)
-                return empty()
-            else:
-                self._handle_deregistration_event(event)
-                return just(event)
-
-        return stream.pipe(
-            object_lossy_counting_operator(self.__object_max_approx_error, self.__control_flow),
-            ops.flat_map(process),
-            ops.merge(self.__output_subject),
-        )
 
     def get_mode(self) -> bool:
         """
@@ -159,4 +149,11 @@ class OCOperator:
 
     @property
     def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:
-        return self._build_operator_pipeline
+        def pipeline(stream: Observable[BOEvent]) -> Observable[dict]:
+            return stream.pipe(
+                ops.do_action(self._route_to_miner),
+                ops.filter(lambda e: not isinstance(e, BOEvent)),
+                ops.merge(self.__output_subject),
+                ops.flat_map(self.__strategy_handler.evaluate),
+            )
+        return pipeline

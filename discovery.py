@@ -71,10 +71,9 @@ def append_ocdfg(output: dict):
 
 
 log.pipe(
-    oc_operator(object_max_approx_error=0.02),
+    oc_operator(object_emit_threshold=0.002),
     #ops.do_action(print),
     oc_merge_operator(),
-    ops.do_action(print)
 ).subscribe(append_ocdfg)
 
 

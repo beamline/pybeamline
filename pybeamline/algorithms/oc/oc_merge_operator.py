@@ -1,8 +1,7 @@
-from collections import defaultdict
 from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
-from pybeamline.algorithms.oc.object_lossy_counting_operator import Command
+from pybeamline.utils.commands import Command
 from pybeamline.objects.aer_diagram import ActivityERDiagram
 from pybeamline.objects.ocdfg import OCDFG
 
@@ -31,18 +30,27 @@ class OCMergeOperator:
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
         self._aer_diagram: Optional[ActivityERDiagram] = None
+        self._registered_object_types: set[str] = set()
 
+    def _handle_command(self, msg: Dict[str, Any], obj_type: str):
+        """
+        Handle a command message, which can be either a registration or deregistration.
+        If the command is to register, create a new HeuristicsNet for the object type.
+        """
+        if msg["command"] == Command.REGISTER:
+            self._registered_object_types.add(obj_type)
+        elif msg["command"] == Command.DEREGISTER:
+            self._registered_object_types.discard(obj_type)
 
-    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]] | None:
-
+    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]]:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
         if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
             self._obj_dfg_repo[obj_type] = msg["model"]
 
+        if msg_type == "command" and obj_type and isinstance(msg.get("command"), Command):
+            self._handle_command(msg, obj_type)
 
-        elif msg_type == "command" and obj_type and msg.get("command") == Command.DEREGISTER:
-            self._obj_dfg_repo.pop(obj_type, None)
         elif msg_type == "aer_diagram" and isinstance(msg.get("model"), ActivityERDiagram):
             # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]
@@ -55,7 +63,7 @@ class OCMergeOperator:
         if not self._aer_diagram:
             return ActivityERDiagram()
 
-        active_object_types = set(self._obj_dfg_repo.keys())
+        active_object_types = self._registered_object_types
         filtered = ActivityERDiagram()
 
         # Add binary relations
@@ -86,18 +94,17 @@ class OCMergeOperator:
         ocdfg = OCDFG()
         # Rebuild the global OCDFG from all stored DFGs
         for obj_type, dfg_model in self._obj_dfg_repo.items():
-            self_loops = set()
+            if obj_type not in self._registered_object_types:
+                continue
             sources, targets = set(), set()
             for (a1, a2), freq in dfg_model.dfg.items():
                 ocdfg.add_edge(a1, obj_type, a2, freq)
-                if a1 == a2:
-                    self_loops.add(a1)
-                sources.add(a1)
-                targets.add(a2)
+                if a1 != a2:
+                    sources.add(a1)
+                    targets.add(a2)
 
-            isolated_self_loops = self_loops - sources - targets
-            start_activities = (sources - targets) | isolated_self_loops
-            end_activities = (targets - sources) | isolated_self_loops
+            start_activities = (sources - targets)
+            end_activities = (targets - sources)
 
             ocdfg.start_activities[obj_type] = start_activities
             ocdfg.end_activities[obj_type] = end_activities

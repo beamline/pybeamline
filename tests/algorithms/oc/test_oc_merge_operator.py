@@ -4,6 +4,7 @@ from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budg
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
+from pybeamline.algorithms.oc.strategies.base import RelativeFrequencyBasedStrategy
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.algorithms.oc.oc_merge_operator import OCMergeOperator
 
@@ -25,6 +26,7 @@ class TestOCMergeOperator(unittest.TestCase):
         test_events_phaseflow_ends_early = [
             {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
             {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
+            {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
             {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
             {"activity": "Reserve Item", "objects": {"Item": ["i2"]}},
             {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
@@ -51,7 +53,7 @@ class TestOCMergeOperator(unittest.TestCase):
             "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
             "Invoice": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
         }
-        self.oc_operator = OCOperator(control_flow, object_max_approx_error=0.9)
+        self.oc_operator = OCOperator(strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.15), control_flow=control_flow)
         self.oc_operator_with_budget = OCOperator(control_flow={
             "Order": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
             "Item": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=10),
@@ -104,40 +106,37 @@ class TestOCMergeOperator(unittest.TestCase):
                                          "Add Item", "Reserve Item", "Cancel Order",
                                          "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})
 
-    def test_oc_merger_with_object_max_approx_error(self):
-        # Test the OCDFG merger with the combined log and object max approx error
-        emitted_models = []
-        self.combined_log_two_workflows.pipe(
-            self.oc_operator.operator,
-            oc_merge_operator()
-        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
-        # Because of object lossy counting, and not involving other workflows
-        # in control_flow we expect the last emitted model to be empty
-        self.assertFalse(emitted_models[-1].edges)
 
-    def test_oc_merger_with_object_max_approx_error_two_workflows(self):
+    def test_oc_merger_with_emit_frequency_two_workflows(self):
         emitted_models = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_max_approx_error=0.5),
+            oc_operator(strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.02)),
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
 
         self.assertTrue({"Guest", "Booking"}.issubset(emitted_models[-1].object_types))
-        self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[3].object_types))
+        self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[6].object_types))
+        self.assertIn("OCDFG:", emitted_models[6].__str__())
+        repr_str = repr(emitted_models[-1])
+        self.assertIn("OCDFG", repr_str)
+        self.assertIn("activities", repr_str)
+        self.assertIn('Guest', repr_str)
+        self.assertIn("edges=", repr_str)
 
     def test_oc_merger_handles_aer_diagram_correctly(self):
         emitted_aer_diagrams = []
         self.combined_log_two_workflows.pipe(
-            oc_operator(object_max_approx_error=0.4, relation_model_update_frequency=30),
-            oc_merge_operator()
+            oc_operator(aer_model_max_approx_error=0.01, aer_model_update_frequency=30),
+            oc_merge_operator(),
         ).subscribe(lambda merged_ocdfg: emitted_aer_diagrams.append(merged_ocdfg["aer_diagram"]))
 
         # Verify that workflow 1 are in the beginning of the emitted AER diagrams
+
         self.assertTrue(len(emitted_aer_diagrams) > 0)
+        
         # Get removes all entries that are empty
         emitted_aer_diagrams = [aer for aer in emitted_aer_diagrams if aer.relations or aer.unary_participations]
         self.assertIn("Register Customer", emitted_aer_diagrams[0].get_unary_participations())
         self.assertTrue({"Create Order", "Add Item", "Reserve Item", "Register Customer", "Cancel Order"}.issubset(emitted_aer_diagrams[0].get_activities()))
         self.assertTrue({"Create Booking", "Check In", "Check Out", "Register Guest", "Reserve Room"}.issubset(emitted_aer_diagrams[-1].get_activities()))
-
 
