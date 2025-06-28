@@ -30,17 +30,17 @@ class OCMergeOperator:
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
         self._aer_diagram: Optional[ActivityERDiagram] = None
-        self._registered_object_types: set[str] = set()
+        self._active_object_types: set[str] = set()
 
     def _handle_command(self, msg: Dict[str, Any], obj_type: str):
         """
-        Handle a command message, which can be either a registration or deregistration.
-        If the command is to register, create a new HeuristicsNet for the object type.
+        Handle a command message, which can be either; active or inactive.
+        If the command is active, merged OCDFG contains that object type.
         """
-        if msg["command"] == Command.REGISTER:
-            self._registered_object_types.add(obj_type)
-        elif msg["command"] == Command.DEREGISTER:
-            self._registered_object_types.discard(obj_type)
+        if msg["command"] == Command.ACTIVE:
+            self._active_object_types.add(obj_type)
+        elif msg["command"] == Command.INACTIVE:
+            self._active_object_types.discard(obj_type)
 
     def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]]:
         msg_type = msg.get("type")
@@ -63,7 +63,7 @@ class OCMergeOperator:
         if not self._aer_diagram:
             return ActivityERDiagram()
 
-        active_object_types = self._registered_object_types
+        active_object_types = self._active_object_types
         filtered = ActivityERDiagram()
 
         # Add binary relations
@@ -94,7 +94,7 @@ class OCMergeOperator:
         ocdfg = OCDFG()
         # Rebuild the global OCDFG from all stored DFGs
         for obj_type, dfg_model in self._obj_dfg_repo.items():
-            if obj_type not in self._registered_object_types:
+            if obj_type not in self._active_object_types:
                 continue
             sources, targets = set(), set()
             for (a1, a2), freq in dfg_model.dfg.items():

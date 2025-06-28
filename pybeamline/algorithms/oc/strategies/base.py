@@ -17,8 +17,8 @@ class EmissionStrategy(Protocol):
 class RelativeFrequencyBasedStrategy(EmissionStrategy):
     """
     Relative Frequency-Based Emission Strategy.
-    - Registers object types if their relative frequency exceeds a threshold.
-    - Deregisters object types if their relative frequency falls below the threshold.
+    - Active object types if their relative frequency exceeds a threshold.
+    - Inactive object types if their relative frequency falls below the threshold.
     Utilising global frequency counts to determine when to register or deregister object types.
     """
     def __init__(self, frequency_threshold: float = 0.05):
@@ -41,12 +41,12 @@ class RelativeFrequencyBasedStrategy(EmissionStrategy):
         commands = []
         if self.__threshold * count >= total and obj_type not in self.__registered:
             self.__registered.add(obj_type)
-            commands.append(create_command(Command.REGISTER, obj_type))
+            commands.append(create_command(Command.ACTIVE, obj_type))
 
         for ot in list(self.__registered):
             if self.__threshold * self.__emitted_models.get(ot, 0) < total:
                 self.__registered.remove(ot)
-                commands.append(create_command(Command.DEREGISTER, ot))
+                commands.append(create_command(Command.INACTIVE, ot))
 
         commands.append(model_event)
         return from_iterable(commands)
@@ -57,8 +57,8 @@ class LossyCountingStrategy(EmissionStrategy):
     Tracks the frequency of emitted object types using the Lossy Counting algorithm,
     which approximates frequency counts within a user-defined error bound.
 
-    - Registers an object type when it is first observed.
-    - Deregisters an object type if its estimated frequency becomes negligible.
+    - Activates an object type when it is first observed.
+    - Inactive an object type if its estimated frequency becomes negligible.
 
     The strategy uses fixed-size buckets, and objects are periodically pruned
     if their estimated total count (frequency + error) falls below the current bucket index.
@@ -92,7 +92,7 @@ class LossyCountingStrategy(EmissionStrategy):
         commands = []
         if is_new and obj_type not in self.__registered:
             self.__registered.add(obj_type)
-            commands.append(create_command(Command.REGISTER, obj_type))
+            commands.append(create_command(Command.ACTIVE, obj_type))
 
         if self.__observed_emitted_models % self.__bucket_width == 0:
             self.__bucket += 1
@@ -102,7 +102,7 @@ class LossyCountingStrategy(EmissionStrategy):
                     del self.__count[ot]
                     if ot in self.__registered:
                         self.__registered.remove(ot)
-                        commands.append(create_command(Command.DEREGISTER, ot))
+                        commands.append(create_command(Command.INACTIVE, ot))
 
         commands.append(model_event)
         return from_iterable(commands)
@@ -110,8 +110,8 @@ class LossyCountingStrategy(EmissionStrategy):
 class SlidingWindowStrategy(EmissionStrategy):
     """
     Sliding Window Emission Strategy.
-    - Registers object types if they emit within the current window.
-    - Deregisters object types if they have not emitted within the last `window_size` events.
+    - Active object types if they emit within the current window.
+    - Inactive object types if they have not emitted within the last `window_size` events.
     This is inspired by the sliding window model in stream mining.
     """
     def __init__(self, window_size: int = 30):
@@ -136,13 +136,13 @@ class SlidingWindowStrategy(EmissionStrategy):
         # Register if newly active
         if obj_type not in self.active_object_types:
             self.active_object_types.add(obj_type)
-            commands.append(create_command(Command.REGISTER, obj_type))
+            commands.append(create_command(Command.ACTIVE, obj_type))
 
         # Check for expired (inactive) object types
         for ot in list(self.active_object_types):
             if (current_index - self.last_seen.get(ot, 0)) >= self.window_size:
                 self.active_object_types.remove(ot)
-                commands.append(create_command(Command.DEREGISTER, ot))
+                commands.append(create_command(Command.INACTIVE, ot))
 
         commands.append(model_event)
         return from_iterable(commands)

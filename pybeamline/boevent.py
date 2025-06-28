@@ -31,25 +31,6 @@ class BOEvent(AbstractEvent):
         self.omap = omap
         self.vmap = vmap or {}
 
-    def flatten(self) -> List["BOEvent"]:
-        """
-        Flattens the event into multiple BOEvents,
-        each associated with a single (object type, object id) pair from the omap.
-        """
-        flattened_events = []
-        for obj_type, obj_ids in self.omap.items():
-            for obj_id in obj_ids:
-                new_omap = {obj_type: {obj_id}}  # Single-entry omap
-                flattened_events.append(
-                    BOEvent(
-                        event_id=self.event_id,
-                        activity_name=self.activity_name,
-                        timestamp=self.timestamp,
-                        omap=new_omap,
-                        vmap=self.vmap
-                    )
-                )
-        return flattened_events
 
     def get_event_id(self):
         return self.event_id

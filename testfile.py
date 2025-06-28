@@ -46,8 +46,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-#combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
-combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
+combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 50)], shuffle=False)
+#combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -55,9 +55,9 @@ combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
 control_flow = {
     "Order": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
     "Item": lambda : heuristics_miner_lossy_counting(model_update_frequency=5),
-    "Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
-    "Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=1),
+    #"Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    #"Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
+    #"Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=1),
 }
 
 visualizer = Visualizer()
@@ -120,7 +120,7 @@ visualizer.generate_relation_gif()
 """
 
 for i, m in enumerate(emitted_models):
-    if i%100 == 0:
+    if i%1== 0:
         visualizer.save(m["ocdfg"])
 
 visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)
