@@ -8,7 +8,7 @@ from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, Rela
     SlidingWindowStrategy
 from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
-from pybeamline.objects.aer_diagram import ActivityERDiagram
+from pybeamline.models.aer_diagram import ActivityER
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from reactivex import operators as ops
 
@@ -164,7 +164,7 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], ActivityER)
 
         for msg in emitted_commands:
             if msg["command"] == Command.DEREGISTER:
@@ -186,7 +186,7 @@ class TestOCOperator(unittest.TestCase):
         emitted_aer_models = []
         ocel_source.pipe(
             oc_operator(aer_model_max_approx_error=0.5, aer_model_update_frequency=30),  # High max_approx_error to trigger forgetting
-            ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], ActivityERDiagram)),
+            ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], ActivityER)),
         ).subscribe(
             on_next=lambda x: emitted_aer_models.append(x),
         )
@@ -225,7 +225,7 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], ActivityER)
 
         for msg in emitted_commands:
             if msg["command"] == Command.DEREGISTER:
@@ -261,7 +261,7 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], ActivityER)
 
         for msg in emitted_commands:
             print(msg)

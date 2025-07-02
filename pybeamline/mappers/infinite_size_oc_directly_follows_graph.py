@@ -4,7 +4,7 @@ import ast
 from datetime import datetime
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.boevent import BOEvent
-from pybeamline.objects.dfg.ocdfg_manager import OCDFGManager
+from pybeamline.models.dfg.ocdfg_manager import OCDFGManager
 
 
 def infinite_size_oc_directly_follows_graph():

@@ -1,9 +1,8 @@
 from typing import Dict, Optional, Protocol, Callable, Any, Union, List
 from reactivex import operators as ops, Observable
 from reactivex.subject import Subject
-from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
-    activity_object_relations_miner_lossy_counting
-from pybeamline.algorithms.oc.strategies.base import EmissionStrategy, \
+from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting
+from pybeamline.algorithms.oc.strategies.base import InclusionStrategy, \
     RelativeFrequencyBasedStrategy, LossyCountingStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
@@ -16,7 +15,7 @@ class StreamMiner(Protocol):
         ... # pragma: no cover
 
 def oc_operator(
-    strategy_handler: Optional[EmissionStrategy] = None,
+    strategy_handler: Optional[InclusionStrategy] = None,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
     aer_model_update_frequency: int = 30,
     aer_model_max_approx_error: float = 0.01,
@@ -66,7 +65,7 @@ class OCOperator:
     Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
     """
     def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-                 strategy_handler: EmissionStrategy = None ,
+                 strategy_handler: InclusionStrategy = None,
                  aer_model_update_frequency: int = 30,
                  aer_model_max_approx_error: float = 0.01,
                  default_miner: Optional[Callable[[], StreamMiner]] = None):
@@ -87,7 +86,7 @@ class OCOperator:
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects["AERStream"] = subject
-        miner_op = activity_object_relations_miner_lossy_counting(
+        miner_op = activity_entity_relations_miner_lossy_counting(
             model_update_frequency=model_update_frequency,
             control_flow=self.__control_flow,
             max_approx_error=max_approx_error

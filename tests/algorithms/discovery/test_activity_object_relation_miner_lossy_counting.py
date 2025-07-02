@@ -2,9 +2,9 @@ import unittest
 from datetime import datetime, timedelta
 
 from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
-    ActivityObjectRelationMinerLossyCounting, activity_object_relations_miner_lossy_counting
+    ActivityObjectRelationMinerLossyCounting, activity_entity_relations_miner_lossy_counting
 from pybeamline.boevent import BOEvent
-from pybeamline.objects.aer_diagram import ActivityERDiagram
+from pybeamline.models.aer_diagram import ActivityER
 from pybeamline.utils.cardinality import Cardinality
 from reactivex import from_iterable
 from reactivex.operators import to_list
@@ -114,7 +114,7 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
             BOEvent("e5", "Reserve", {"Item": {"i5"}}, datetime.now()),
         ]
 
-        miner = activity_object_relations_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.2)
+        miner = activity_entity_relations_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.2)
         result = from_iterable(events).pipe(miner, to_list()).run()
 
         self.assertEqual(len(result), 1)

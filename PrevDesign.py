@@ -2,7 +2,7 @@ from graphviz import render
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
-from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.utils.visualizer import Visualizer
 

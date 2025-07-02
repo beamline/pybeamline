@@ -1,7 +1,7 @@
 from typing import Tuple, List, Any, Dict
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.algorithms.oc.oc_operator import oc_operator
-from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pm4py.read import read_ocel2_json
 from pm4py.algo.discovery.ocel.ocdfg import algorithm as ocdfg_discovery

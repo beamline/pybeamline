@@ -2,10 +2,10 @@ from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
 from pybeamline.utils.commands import Command
-from pybeamline.objects.aer_diagram import ActivityERDiagram
-from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.models.aer import AER
+from pybeamline.models.ocdfg import OCDFG
 
-def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,ActivityERDiagram]]]]:
+def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,AER]]]]:
     manager = OCMergeOperator()
     def operator(stream):
         # Map each incoming message through the manager.process method
@@ -23,13 +23,13 @@ class OCMergeOperator:
     Attributes:
         _obj_dfg_repo (Dict[str, HeuristicsNet]):
             Maps object type -> its current DFG model.
-        _aer_diagram (Optional[ActivityERDiagram]):
+        _aer_diagram (Optional[AER]):
             The latest ActivityERDiagram, which is updated with the latest relations
             and unary participations from the incoming messages.
     """
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
-        self._aer_diagram: Optional[ActivityERDiagram] = None
+        self._aer_diagram: Optional[AER] = None
         self._active_object_types: set[str] = set()
 
     def _handle_command(self, msg: Dict[str, Any], obj_type: str):
@@ -42,7 +42,7 @@ class OCMergeOperator:
         elif msg["command"] == Command.INACTIVE:
             self._active_object_types.discard(obj_type)
 
-    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,ActivityERDiagram]]:
+    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,AER]]:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
         if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
@@ -51,7 +51,7 @@ class OCMergeOperator:
         if msg_type == "command" and obj_type and isinstance(msg.get("command"), Command):
             self._handle_command(msg, obj_type)
 
-        elif msg_type == "aer_diagram" and isinstance(msg.get("model"), ActivityERDiagram):
+        elif msg_type == "aer_diagram" and isinstance(msg.get("model"), AER):
             # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]
 
@@ -59,12 +59,12 @@ class OCMergeOperator:
         ocdfg = self._build_ocdfg()
         return {"ocdfg": ocdfg, "aer_diagram": aer_diagram}
 
-    def _build_aer_diagram(self) -> ActivityERDiagram:
+    def _build_aer_diagram(self) -> AER:
         if not self._aer_diagram:
-            return ActivityERDiagram()
+            return AER()
 
         active_object_types = self._active_object_types
-        filtered = ActivityERDiagram()
+        filtered = AER()
 
         # Add binary relations
         for activity, rels in self._aer_diagram.relations.items():
