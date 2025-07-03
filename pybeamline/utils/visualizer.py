@@ -72,7 +72,7 @@ class Visualizer:
         self.counter += 1
 
     def draw_aer_diagram(self, model: AER, max_activities_per_column=5) -> Graph:
-        dot = Graph(name="ObjectCentricRelations", format="png")
+        dot = Graph(name="Activity Entity Relations", format="png")
         dot.attr(compound="true", fontsize="14")
 
         col_idx = 0
@@ -94,20 +94,23 @@ class Visualizer:
                     fontsize="16"
                 )
 
-                # Collect object types from both relations and explicitly tracked types
-                obj_types = set()
+                relation_obj_types = set()
                 if activity_name in model.relations:
                     edges = model.relations[activity_name]
-                    obj_types |= {s for (s, t) in edges.keys()} | {t for (s, t) in edges.keys()}
+                    relation_obj_types = {s for (s, t) in edges.keys()} | {t for (s, t) in edges.keys()}
                 else:
                     edges = {}
 
-                obj_types |= model.object_types.get(activity_name, set())
+                all_obj_types = model.object_types.get(activity_name, set())
+                lone_obj_types = all_obj_types - relation_obj_types
 
-                for obj in sorted(obj_types):
+                # Add all nodes
+                for obj in sorted(all_obj_types):
                     node_id = f"{activity_name}__{obj}"
-                    sub.node(node_id, label=obj, shape="ellipse")
+                    shape = "ellipse" if obj in relation_obj_types else "box"
+                    sub.node(node_id, label=obj, shape=shape, style="filled" if obj in lone_obj_types else "")
 
+                # Draw relations
                 for (src, tgt), card in edges.items():
                     src_id = f"{activity_name}__{src}"
                     tgt_id = f"{activity_name}__{tgt}"

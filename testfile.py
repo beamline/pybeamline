@@ -40,6 +40,7 @@ test_receptonist= [
 
 test_events_phaseflow_ends_early = [
     {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
+    {"activity": "Register Customer", "objects": {"Item": ["c2"], "Order": ["o2"]}},
     {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
     {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
     {"activity": "Reserve Item", "objects": {"Item": ["i2"]}},
