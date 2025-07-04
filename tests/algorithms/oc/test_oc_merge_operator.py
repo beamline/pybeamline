@@ -134,9 +134,9 @@ class TestOCMergeOperator(unittest.TestCase):
 
         self.assertTrue(len(emitted_aer_diagrams) > 0)
         
-        # Get removes all entries that are empty
-        emitted_aer_diagrams = [aer for aer in emitted_aer_diagrams if aer.relations or aer.unary_participations]
-        self.assertIn("Register Customer", emitted_aer_diagrams[0].get_unary_participations())
-        self.assertTrue({"Create Order", "Add Item", "Reserve Item", "Register Customer", "Cancel Order"}.issubset(emitted_aer_diagrams[0].get_activities()))
+        # Get removes all entries where relations are empty
+        emitted_aer_diagrams = [aer for aer in emitted_aer_diagrams if aer.relations]
+        self.assertIn("Customer", emitted_aer_diagrams[0].get_object_types("Register Customer"))
+        self.assertTrue({'Create Order', 'Register Customer', 'Add Item', 'Cancel Order'}.issubset(emitted_aer_diagrams[0].get_activities()))
         self.assertTrue({"Create Booking", "Check In", "Check Out", "Register Guest", "Reserve Room"}.issubset(emitted_aer_diagrams[-1].get_activities()))
 

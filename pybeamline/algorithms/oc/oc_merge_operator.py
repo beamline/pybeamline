@@ -55,32 +55,42 @@ class OCMergeOperator:
             # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]
 
-        aer_diagram = self._build_aer_diagram()
+
         ocdfg = self._build_ocdfg()
+        aer_diagram = self._build_aer_diagram(ocdfg)
         return {"ocdfg": ocdfg, "aer_diagram": aer_diagram}
 
-    def _build_aer_diagram(self) -> AER:
+    def _build_aer_diagram(self, ocdfg: OCDFG) -> AER:
         if not self._aer_diagram:
             return AER()
 
-        active_object_types = self._active_object_types
-        filtered = AER()
+        active_object_types = ocdfg.object_types
+        activities = ocdfg.activities
+        pruned_aer = AER()
 
-        # Add binary relations
+        # Prune activities
+        for activity in self._aer_diagram.activities:
+            if activity not in activities:
+                continue
+            pruned_aer.add_activity(activity)
+
+        # Prune entities
+        for activity, types in self._aer_diagram.object_types.items():
+            if activity not in activities:
+                continue
+            active_types = types.intersection(active_object_types)
+            if active_types:
+                pruned_aer.add_object_types(activity, active_types)
+
+        # Prune relations
         for activity, rels in self._aer_diagram.relations.items():
+            if activity not in activities:
+                continue
             for (source, target), cardinality in rels.items():
                 if source in active_object_types and target in active_object_types:
-                    filtered.add_relation(activity, source, target, cardinality)
+                    pruned_aer.add_relation(activity, source, target, cardinality)
 
-        # Add unary participations
-        if hasattr(self._aer_diagram, "unary_participations"):
-            for activity, types in self._aer_diagram.unary_participations.items():
-                for obj_type in types:
-                    if obj_type in active_object_types:
-                        filtered.add_unary_participation(activity, obj_type)
-
-        self._aer_diagram = filtered
-        return filtered
+        return pruned_aer
 
 
     def _build_ocdfg(self) -> OCDFG:

@@ -112,7 +112,7 @@ class OCOperator:
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
-        miner_op = (miner or self.__default_miner)()
+        miner_op = miner or self.__default_miner
 
         dfg_stream = subject.pipe(
             miner_op,
@@ -140,8 +140,8 @@ class OCOperator:
 
             if obj_type not in self.__miner_subjects and self.__dynamic_mode:
                 # Dynamically create a new miner subject
-                self._register_stream(obj_type)
-            if obj_type not in self.__miner_subjects:
+                self._register_stream(obj_type, self.__default_miner())
+            elif obj_type not in self.__miner_subjects:
                 continue
 
             self.__miner_subjects[obj_type].on_next(flat_event)

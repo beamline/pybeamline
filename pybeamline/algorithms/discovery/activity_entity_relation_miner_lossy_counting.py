@@ -32,13 +32,17 @@ class ActivityEntityRelationMinerLossyCounting:
         self.__control_flow = control_flow
         self.__D_C: Dict[str, Dict[Tuple[str, str], Dict[Cardinality, Tuple[int, int]]]] = {}
         self.__D_O: Dict[str, Set[str]] = {}
-        self.__observed_events = 0
+        self.__D_N: Dict[str, int] = {}
+        self.__observed_events = 1
         self.__bucket_width = int(1 / max_approx_error)
 
     def ingest_event(self, event: BOEvent):
         activity = event.get_event_name()
         omap = event.get_omap()
-        current_bucket = math.ceil(self.__observed_events / self.__bucket_width)
+
+        self.__D_N[activity] = self.__D_N.get(activity, 0) + 1
+
+        current_bucket = math.ceil(self.__D_N[activity] / self.__bucket_width)
         obj_types = [t for t in omap if not self.__control_flow or t in self.__control_flow]
 
         self.__D_O.setdefault(activity, set()).update(obj_types)
@@ -59,28 +63,30 @@ class ActivityEntityRelationMinerLossyCounting:
                     else:
                         card_map[card] = (1, current_bucket)
 
-        if self.__observed_events % self.__bucket_width == 0:
-            self._cleanup(current_bucket)
+        if self.__D_N[activity] % self.__bucket_width == 0:
+            self._cleanup(current_bucket, activity)
 
-        self.__observed_events += 1
+        self.__observed_events+= 1
 
-    def _cleanup(self, current_bucket: int):
-        for activity in list(self.__D_C.keys()):
-            rel_map = self.__D_C[activity]
-            to_remove_keys = []
+    def _cleanup(self, current_bucket: int, activity: str):
+        if activity not in self.__D_C:
+            return
+        rel_map = self.__D_C[activity]
+        to_remove_keys = []
 
-            for key, card_map in rel_map.items():
-                to_remove_cards = [c for c, (freq, delta) in card_map.items() if freq + delta <= current_bucket]
-                for c in to_remove_cards:
-                    del card_map[c]
-                if not card_map:
-                    to_remove_keys.append(key)
+        for key, card_map in rel_map.items():
+            to_remove_cards = [c for c, (freq, delta) in card_map.items() if freq + delta <= current_bucket]
+            for c in to_remove_cards:
+                del card_map[c]
+            if not card_map:
+                to_remove_keys.append(key)
 
-            for key in to_remove_keys:
+        for key in to_remove_keys:
+            if key in rel_map:
                 del rel_map[key]
 
-            if not rel_map:
-                del self.__D_C[activity]
+        if not rel_map:
+            del self.__D_C[activity]
 
     def get_model(self) -> AER:
         diagram = AER()
@@ -96,6 +102,5 @@ class ActivityEntityRelationMinerLossyCounting:
 
     def observed_events(self) -> int:
         return self.__observed_events
-
 
 

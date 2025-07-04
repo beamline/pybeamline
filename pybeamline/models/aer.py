@@ -7,7 +7,7 @@ from pybeamline.utils.cardinality import Cardinality
 @dataclass
 class AER:
     """
-    Activity Entity Relationship Model (AER).
+    Activity-Entity-Relationship Model (AER).
     Tracks cardinalities between object types per activity.
     Attributes:
         activities: All activities observed.
@@ -31,6 +31,9 @@ class AER:
         self.object_types[activity].update([a, b])
         self.relations[activity][key] = card
 
+    def add_activity(self, activity: str):
+        self.activities.add(activity)
+
     def get_activities(self) -> Set[str]:
         return self.activities
 
@@ -41,7 +44,7 @@ class AER:
         return self.object_types.get(activity, set())
 
     def __str__(self):
-        lines = ["ActivityERDiagram:"]
+        lines = ["ActivityER:"]
         for act, rels in self.relations.items():
             for (src, tgt), card in rels.items():
                 lines.append(f"{act}: {src} → {tgt} [{card.name}]")
@@ -49,7 +52,7 @@ class AER:
 
     def __repr__(self):
         return (
-            f"ActivityERDiagram(activities={sorted(self.activities)}, "
+            f"ActivityER(activities={sorted(self.activities)}, "
             f"object_types={dict(self.object_types)}, "
             f"relations={dict(self.relations)})"
         )

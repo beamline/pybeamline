@@ -115,33 +115,34 @@ class SlidingWindowStrategy(InclusionStrategy):
     """
     def __init__(self, window_size: int = 30):
         self.window_size = window_size
-        self.__observed_models = 1
-        self.__D_W: Dict[str, int] = {}
-        self.__D_A: Set[str] = set()
+        self.observed_events = 0
+        self.D_W: Dict[str, int] = {}  # Last seen index for each object type
 
-    def evaluate(self, model_event: dict) -> Observable[dict]:
+    def evaluate(self, model_event: dict):
         if model_event.get("type") != "model":
             return just(model_event)
 
-        current_index = self.__observed_models
+        self.observed_events += 1
         obj_type = model_event["object_type"]
-
         commands = []
 
         # Update last seen
-        self.__D_W[obj_type] = current_index
-
-        # Register if newly active
-        if obj_type not in self.__D_A:
-            self.__D_A.add(obj_type)
+        if obj_type in self.D_W:
+            self.D_W[obj_type] = self.observed_events
+        else:
+            self.D_W[obj_type] = self.observed_events
             commands.append(create_command(Command.ACTIVE, obj_type))
 
-        # Check for expired (inactive) object types
-        for ot in list(self.__D_A):
-            if (current_index - self.__D_W.get(ot, 0)) >= self.window_size:
-                self.__D_A.remove(ot)
-                commands.append(create_command(Command.INACTIVE, ot))
+
+        to_remove = []
+        # Prune inactive object types
+        for obj_type, last_seen in self.D_W.items():
+            if self.observed_events - last_seen >= self.window_size:
+                commands.append(create_command(Command.INACTIVE, obj_type))
+                to_remove.append(obj_type)
+
+        for obj_type in to_remove:
+            del self.D_W[obj_type]
 
         commands.append(model_event)
-        self.__observed_models += 1
         return from_iterable(commands)

@@ -8,7 +8,7 @@ from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, Rela
     SlidingWindowStrategy
 from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
-from pybeamline.models.aer_diagram import ActivityER
+from pybeamline.models.aer import AER
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from reactivex import operators as ops
 
@@ -136,7 +136,7 @@ class TestOCOperator(unittest.TestCase):
             self.assertEqual("control_flow values must be StreamMiner callables, got bool for 'Customer'", str(e))
 
     def test_oc_operator_with_freq_threshold(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -164,11 +164,11 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityER)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
 
     def test_oc_operator_aer_diagram_can_forget_relations(self):
         events_with_multiple_items= [
@@ -182,21 +182,21 @@ class TestOCOperator(unittest.TestCase):
             {"activity": "Add Item", "objects": {"Order": ["o1","o2"], "Item": ["i1","i2"]}},
         ]
 
-        ocel_source = dict_test_ocel_source([(events_with_multiple_items, 10), (events_with_single_item_but_multiple_orders,10)], shuffle=False)
+        ocel_source = dict_test_ocel_source([(events_with_multiple_items, 10), (events_with_single_item_but_multiple_orders,20)], shuffle=False)
         emitted_aer_models = []
         ocel_source.pipe(
             oc_operator(aer_model_max_approx_error=0.5, aer_model_update_frequency=30),  # High max_approx_error to trigger forgetting
-            ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], ActivityER)),
+            ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], AER)),
         ).subscribe(
             on_next=lambda x: emitted_aer_models.append(x),
         )
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Add Item")[("Item","Order")])
-        self.assertEqual(Cardinality.MANY_TO_MANY, emitted_aer_models[1]["model"].get_relations("Add Item")[("Item","Order")])
+        self.assertEqual(Cardinality.MANY_TO_MANY, emitted_aer_models[-1]["model"].get_relations("Add Item")[("Item","Order")])
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Create Order")[("Customer","Order")])
-        self.assertEqual(Cardinality.ONE_TO_MANY, emitted_aer_models[1]["model"].get_relations("Create Order")[("Customer","Order")])
+        self.assertEqual(Cardinality.ONE_TO_MANY, emitted_aer_models[-1]["model"].get_relations("Create Order")[("Customer","Order")])
 
     def test_oc_operator_with_strategy_lossy_counting(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -225,14 +225,14 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityER)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
 
     def test_oc_operator_with_strategy_sliding_window(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -261,9 +261,8 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityER)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            print(msg)
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
