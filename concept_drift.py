@@ -2,7 +2,6 @@ from numpy.matlib import empty
 
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
-from pybeamline.algorithms.oc.oc_operator import oc_operator, MiningStrategy
 from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
 from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source

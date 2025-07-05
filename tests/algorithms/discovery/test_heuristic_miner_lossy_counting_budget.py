@@ -37,7 +37,7 @@ class TestHeuristicsMinerLossyCountingBudget(unittest.TestCase):
             BOEvent("e10", "J", {"Customer": {"c1"}}, base_time + timedelta(seconds=90)),
         ]
 
-        miner = heuristics_miner_lossy_counting_budget(model_update_frequency=10)
+        miner = heuristics_miner_lossy_counting_budget(model_update_frequency=5, budget=5)
         result_stream = from_iterable(boevents).pipe(miner, to_list())
         models = result_stream.run()
 

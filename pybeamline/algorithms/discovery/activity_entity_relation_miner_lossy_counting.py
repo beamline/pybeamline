@@ -12,9 +12,12 @@ def activity_entity_relations_miner_lossy_counting(model_update_frequency=10, ma
     """
     Entity Relationship Miner using a lossy counting approach.
     :param control_flow:
-    :param model_update_frequency: Frequency of model updates
-    :param max_approx_error: Maximum approximation error for the lossy counting on objects
-    :return: Function to process BOEvent and return a dictionary with the model
+    Optional dictionary mapping object types (str) to miner factory callables (i.e., `Callable[[], StreamMiner]`).
+    :param model_update_frequency:
+    Frequency of model updates
+    :param max_approx_error:
+     Maximum approximation error for the lossy counting on objects
+    :return: Activity-Entity Relationship (AER)
     """
     obj_rel = ActivityEntityRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
 
@@ -72,21 +75,11 @@ class ActivityEntityRelationMinerLossyCounting:
         if activity not in self.__D_C:
             return
         rel_map = self.__D_C[activity]
-        to_remove_keys = []
 
         for key, card_map in rel_map.items():
             to_remove_cards = [c for c, (freq, delta) in card_map.items() if freq + delta <= current_bucket]
             for c in to_remove_cards:
                 del card_map[c]
-            if not card_map:
-                to_remove_keys.append(key)
-
-        for key in to_remove_keys:
-            if key in rel_map:
-                del rel_map[key]
-
-        if not rel_map:
-            del self.__D_C[activity]
 
     def get_model(self) -> AER:
         diagram = AER()

@@ -3,7 +3,7 @@ from reactivex import operators as ops, Observable
 from reactivex.subject import Subject
 from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting
 from pybeamline.algorithms.oc.strategies.base import InclusionStrategy, \
-    RelativeFrequencyBasedStrategy, LossyCountingStrategy
+    RelativeFrequencyBasedStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
@@ -15,7 +15,7 @@ class StreamMiner(Protocol):
         ... # pragma: no cover
 
 def oc_operator(
-    strategy_handler: Optional[InclusionStrategy] = None,
+    inclusion_strategy: Optional[InclusionStrategy] = None,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
     aer_model_update_frequency: int = 30,
     aer_model_max_approx_error: float = 0.01,
@@ -23,9 +23,8 @@ def oc_operator(
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
     Factory function to create a configured OCOperator.
-
-    :param strategy_handler:
-        Optional object-type concept drift strategy handler,
+    :param inclusion_strategy:
+        Optional object-type concept drift inclusion strategy.
         Determines when object types should be considered active or inactive.
     :param control_flow:
         Optional dictionary mapping object types (str) to miner factory callables (i.e., `Callable[[], StreamMiner]`).
@@ -48,11 +47,11 @@ def oc_operator(
         if not callable(miner):
             raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
 
-    if strategy_handler is None:
-        strategy_handler = RelativeFrequencyBasedStrategy(0.05)
+    if inclusion_strategy is None:
+        inclusion_strategy = RelativeFrequencyBasedStrategy(0.05)
 
     return OCOperator(
-        strategy_handler=strategy_handler,
+        inclusion_strategy=inclusion_strategy,
         control_flow=control_flow or {},
         aer_model_update_frequency=aer_model_update_frequency,
         aer_model_max_approx_error=aer_model_max_approx_error,
@@ -65,11 +64,11 @@ class OCOperator:
     Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
     """
     def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-                 strategy_handler: InclusionStrategy = None,
+                 inclusion_strategy: InclusionStrategy = None,
                  aer_model_update_frequency: int = 30,
                  aer_model_max_approx_error: float = 0.01,
                  default_miner: Optional[Callable[[], StreamMiner]] = None):
-        self.__strategy_handler = strategy_handler or RelativeFrequencyBasedStrategy()
+        self.__inclusion_strategy = inclusion_strategy or RelativeFrequencyBasedStrategy()
         self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
         self.__default_miner = default_miner or (lambda: heuristics_miner_lossy_counting(20))
@@ -94,7 +93,7 @@ class OCOperator:
         aer_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
-                "type": "aer_diagram",
+                "type": "aer",
                 "model": model
             }),
         )
@@ -117,7 +116,7 @@ class OCOperator:
         dfg_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
-                "type": "model",
+                "type": "dfg",
                 "object_type": obj_type,
                 "model": model
             }),
@@ -175,6 +174,6 @@ class OCOperator:
                 ops.do_action(self._route_to_miner),
                 ops.filter(lambda e: not isinstance(e, BOEvent)),
                 ops.merge(self.__output_subject),
-                ops.flat_map(self.__strategy_handler.evaluate),
+                ops.flat_map(self.__inclusion_strategy.evaluate),
             )
         return pipeline

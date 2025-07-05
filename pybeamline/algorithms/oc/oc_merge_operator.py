@@ -6,6 +6,12 @@ from pybeamline.models.aer import AER
 from pybeamline.models.ocdfg import OCDFG
 
 def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,AER]]]]:
+    """
+    Factory function to create an operator that merges object-centric DFGs (OCDFGs)
+    and Activity-Entity Relationship (AER) diagrams from incoming events messages.
+    Must be used after the OC-Operator in a pipeline
+    :return:
+    """
     manager = OCMergeOperator()
     def operator(stream):
         # Map each incoming message through the manager.process method
@@ -19,13 +25,14 @@ class OCMergeOperator:
     """
     Stateful manager that keeps the latest DFG (HeuristicsNet) per object type,
     handles deregistration events, and reconstructs the merged OCDFG on demand.
-
-    Attributes:
-        _obj_dfg_repo (Dict[str, HeuristicsNet]):
-            Maps object type -> its current DFG model.
-        _aer_diagram (Optional[AER]):
-            The latest ActivityERDiagram, which is updated with the latest relations
-            and unary participations from the incoming messages.
+    _obj_dfg_repo (Dict[str, HeuristicsNet]):
+        Maps object type -> its current DFG model.
+    _aer_diagram (Optional[AER]):
+        The latest ActivityERDiagram, which is updated with the latest relations
+        and unary participations from the incoming messages.
+    _active_object_types (set[str]):
+        Set of currently active object types, which are included in the merged OCDFG.
+        Based on the commands sent by InclusionStrategy.
     """
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}
@@ -45,22 +52,26 @@ class OCMergeOperator:
     def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,AER]]:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
-        if msg_type == "model" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
+
+        if msg_type == "dfg" and obj_type and isinstance(msg.get("model"), HeuristicsNet):
+            # Overwrite the DFG for the object type
             self._obj_dfg_repo[obj_type] = msg["model"]
-
         if msg_type == "command" and obj_type and isinstance(msg.get("command"), Command):
+            # Handle the command for the object type
             self._handle_command(msg, obj_type)
-
-        elif msg_type == "aer_diagram" and isinstance(msg.get("model"), AER):
+        if msg_type == "aer" and isinstance(msg.get("model"), AER):
             # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]
 
-
         ocdfg = self._build_ocdfg()
         aer_diagram = self._build_aer_diagram(ocdfg)
-        return {"ocdfg": ocdfg, "aer_diagram": aer_diagram}
+        return {"ocdfg": ocdfg, "aer": aer_diagram}
 
     def _build_aer_diagram(self, ocdfg: OCDFG) -> AER:
+        """
+        Builds the Activity-Entity Relationship (AER) model reflecting behaviour
+        of the current OCDFG.
+        """
         if not self._aer_diagram:
             return AER()
 
@@ -95,11 +106,11 @@ class OCMergeOperator:
 
     def _build_ocdfg(self) -> OCDFG:
         """
-        Construct a fresh OCDFG by iterating over all stored per-object DFGs.
-        For each transition (A -> B) in a per-object DFG, add an edge
-        A --(object_type)--> B in the global OCDFG, overwriting frequency.
-
+        Builds the global OCDFG from the stored DFGs per object type.
         Also record start/end activities per object type using a simple heuristic.
+        Note:
+        Construction is based on description of the OCDFG concept in
+        Berti & van der Aalst (2023) "OC-PM: analyzing object-centric event logs and process models"
         """
         ocdfg = OCDFG()
         # Rebuild the global OCDFG from all stored DFGs
@@ -113,6 +124,7 @@ class OCMergeOperator:
                     sources.add(a1)
                     targets.add(a2)
 
+            # Simple heuristic to determine start and end activities
             start_activities = (sources - targets)
             end_activities = (targets - sources)
 

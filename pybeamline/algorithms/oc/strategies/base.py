@@ -1,14 +1,8 @@
-import enum
 import math
 from asyncio import Protocol
-from collections import deque
 from typing import Any, Dict, Set, Tuple
-from reactivex import operators as ops
-from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import Observable, from_iterable, just
-from pybeamline.boevent import BOEvent
 from pybeamline.utils.commands import Command, create_command
-
 
 class InclusionStrategy(Protocol):
     def evaluate(self, model_event: dict) -> Observable[dict]:
@@ -30,7 +24,7 @@ class RelativeFrequencyBasedStrategy(InclusionStrategy):
         self.__D_A: Set[str] = set() # Set of active object types
 
     def evaluate(self, model_event: dict) -> Observable[dict]:
-        if model_event.get("type") != "model":
+        if model_event.get("type") != "dfg":
             return just(model_event)
 
         obj_type = model_event["object_type"]
@@ -68,31 +62,29 @@ class LossyCountingStrategy(InclusionStrategy):
     def __init__(self, max_approx_error: float):
         self.__max_approx_error = max_approx_error
         self.__bucket_width = int(math.ceil(1 / self.__max_approx_error))
-        self.__bucket = 1
-        self.__observed_emitted_models = 0
+        self.__observed_emitted_models = 1
         self.__D_C: Dict[str, Tuple[int, int]] = {}  # {object_type: (frequency, delta)}
 
     def evaluate(self, model_event: dict) -> Observable[dict]:
-        if model_event.get("type") != "model":
+        if model_event.get("type") != "dfg":
             return just(model_event)
 
-        self.__observed_emitted_models += 1
-        obj_type = model_event["object_type"]
+        b_curr = int(math.ceil(self.__observed_emitted_models / self.__bucket_width))
 
+        obj_type = model_event["object_type"]
         commands = []
 
-        if obj_type not in self.__D_C:
-            self.__D_C[obj_type] = (1, self.__bucket - 1)
-            commands.append(create_command(Command.ACTIVE, obj_type))
-        else:
+        if obj_type in self.__D_C:
             freq, delta = self.__D_C[obj_type]
             self.__D_C[obj_type] = (freq + 1, delta)
+        else:
+            self.__D_C[obj_type] = (1, b_curr - 1)
+            commands.append(create_command(Command.ACTIVE, obj_type))
 
         if self.__observed_emitted_models % self.__bucket_width == 0:
-            self.__bucket += 1
             to_remove = []
             for ot, (freq, delta) in self.__D_C.items():
-                if freq + delta <= self.__bucket:
+                if freq + delta <= b_curr:
                     to_remove.append(ot)
 
             for ot in to_remove:
@@ -100,6 +92,7 @@ class LossyCountingStrategy(InclusionStrategy):
                 commands.append(create_command(Command.INACTIVE, ot))
 
         commands.append(model_event)
+        self.__observed_emitted_models += 1
         return from_iterable(commands)
 
 class SlidingWindowStrategy(InclusionStrategy):
@@ -119,7 +112,7 @@ class SlidingWindowStrategy(InclusionStrategy):
         self.D_W: Dict[str, int] = {}  # Last seen index for each object type
 
     def evaluate(self, model_event: dict):
-        if model_event.get("type") != "model":
+        if model_event.get("type") != "dfg":
             return just(model_event)
 
         self.observed_events += 1

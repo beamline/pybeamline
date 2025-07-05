@@ -98,7 +98,7 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 strategy = SlidingWindowStrategy(2)
 combined_log.pipe(
-    oc_operator(strategy_handler=strategy),
+    oc_operator(inclusion_strategy=strategy),
     #ops.do_action(print),
     oc_merge_operator(),
     #ops.do_action(print),

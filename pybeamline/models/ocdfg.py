@@ -32,9 +32,7 @@ class OCDFG:
                 Declares an activity as an end node for a specific object type.
         Note:
         This implementation is a streaming-compatible adaptation of the OCDFG concept. It diverges from the formal definition
-        in Berti & van der Aalst (2018) by tracking lossy counting-based control flow
-        relationships grouped by object type, rather than directly constructing
-        event-object-projected graphs in an Object-Centric Event Log (OCEL).
+        in Berti & van der Aalst (2023) "OC-PM: analyzing object-centric event logs and process models"
         """
 
     activities: Set[str] = field(default_factory=set)
