@@ -36,3 +36,4 @@ class TestOcelJsonLogSource(unittest.TestCase):
             self.assertIsInstance(event, BOEvent)
 
 
+

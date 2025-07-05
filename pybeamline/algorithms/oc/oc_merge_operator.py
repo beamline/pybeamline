@@ -1,6 +1,8 @@
 from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
+
+from pybeamline.boevent import BOEvent
 from pybeamline.utils.commands import Command
 from pybeamline.models.aer import AER
 from pybeamline.models.ocdfg import OCDFG
@@ -49,7 +51,7 @@ class OCMergeOperator:
         elif msg["command"] == Command.INACTIVE:
             self._active_object_types.discard(obj_type)
 
-    def process(self, msg: Dict[str, Any]) -> Dict[str,Union[OCDFG,AER]]:
+    def process(self, msg: Dict[str, Any]) -> Optional[Dict[str,Union[OCDFG,AER]]]:
         msg_type = msg.get("type")
         obj_type = msg.get("object_type")
 
@@ -59,6 +61,7 @@ class OCMergeOperator:
         if msg_type == "command" and obj_type and isinstance(msg.get("command"), Command):
             # Handle the command for the object type
             self._handle_command(msg, obj_type)
+            return None # Suppress the command message
         if msg_type == "aer" and isinstance(msg.get("model"), AER):
             # Overwrite the AER diagram with the latest one
             self._aer_diagram = msg["model"]

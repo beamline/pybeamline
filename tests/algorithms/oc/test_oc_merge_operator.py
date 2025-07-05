@@ -5,6 +5,7 @@ from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heur
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.algorithms.oc.strategies.base import RelativeFrequencyBasedStrategy
+from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.algorithms.oc.oc_merge_operator import OCMergeOperator
 
@@ -71,15 +72,14 @@ class TestOCMergeOperator(unittest.TestCase):
             oc_merge_operator()
         ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
 
-        for merged_ocdfg in emitted_models:
-            if merged_ocdfg is None or not merged_ocdfg.edges:
-                continue
+        for ocdfg in emitted_models:
             # No empty models should be emitted
-            self.assertTrue(len(merged_ocdfg.edges.keys()) > 0)
-            self.assertTrue(len(merged_ocdfg.activities) > 0)
+            self.assertTrue(len(ocdfg.edges.keys()) > 0)
+            self.assertTrue(len(ocdfg.activities) > 0)
+            self.assertIsInstance(ocdfg, OCDFG)
 
             # Check if the merged model contains the expected activities
-            for activity in merged_ocdfg.activities:
+            for activity in ocdfg.activities:
                 self.assertIn(activity, {"Register Customer", "Create Order",
                                          "Add Item", "Reserve Item", "Cancel Order",
                                          "Pack Item", "Ship Item", "Send Invoice", "Receive Review"})

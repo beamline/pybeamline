@@ -7,7 +7,6 @@ from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
-
 booking_flow = [
     {"activity": "Register Guest", "objects": {"Guest": ["g1"]}},
     {"activity": "Create Booking", "objects": {"Guest": ["g1"], "Booking": ["b1"]}},

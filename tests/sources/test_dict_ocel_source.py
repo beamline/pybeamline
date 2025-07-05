@@ -35,6 +35,7 @@ class TestDictOcelSource(unittest.TestCase):
         # Capture the emitted events
         emitted_events = []
         shuffled_traces.pipe(
+            ops.do_action(print),
             ops.map(lambda event: event),
         ).subscribe(
             on_next=lambda x: emitted_events.append(x),
