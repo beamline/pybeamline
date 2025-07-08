@@ -4,8 +4,8 @@ from graphviz import Digraph, Graph
 import random
 from graphviz import Graph
 
-from pybeamline.objects.aer_diagram import ActivityERDiagram
-from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.models.aer import AER
+from pybeamline.models.ocdfg import OCDFG
 
 class Visualizer:
     def __init__(self):
@@ -71,24 +71,21 @@ class Visualizer:
         self.snapshots_ocdfg.append(ocdfg_path)
         self.counter += 1
 
-    def draw_aer_diagram(self, model: ActivityERDiagram, max_activities_per_column=5) -> Graph:
-        dot = Graph(name="ObjectCentricRelations", format="png")
+    def draw_aer_diagram(self, model: AER, max_activities_per_column=5) -> Graph:
+        dot = Graph(name="Activity Entity Relations", format="png")
         dot.attr(compound="true", fontsize="14")
 
         col_idx = 0
         act_count = 0
 
-        # Collect all activities (union of relations and unary participation)
-        all_activities = set(model.relations.keys()) | set(model.unary_participations.keys())
+        all_activities = set(model.relations.keys()) | set(model.object_types.keys())
 
         for idx, activity_name in enumerate(sorted(all_activities)):
-            # Wrap to the next column if needed
             if act_count >= max_activities_per_column:
                 col_idx += 1
                 act_count = 0
             act_count += 1
 
-            # Start a cluster for the activity
             with dot.subgraph(name=f"cluster_col_{col_idx}_{idx}") as sub:
                 sub.attr(
                     label=activity_name,
@@ -97,24 +94,23 @@ class Visualizer:
                     fontsize="16"
                 )
 
-                # Collect object types from relations
-                obj_types = set()
+                relation_obj_types = set()
                 if activity_name in model.relations:
                     edges = model.relations[activity_name]
-                    obj_types |= {t for (s, t) in edges.keys()} | {s for (s, t) in edges.keys()}
+                    relation_obj_types = {s for (s, t) in edges.keys()} | {t for (s, t) in edges.keys()}
                 else:
                     edges = {}
 
-                # Add unary participation nodes
-                unary_nodes = model.unary_participations.get(activity_name, set())
-                obj_types |= unary_nodes
+                all_obj_types = model.object_types.get(activity_name, set())
+                lone_obj_types = all_obj_types - relation_obj_types
 
-                # Draw nodes
-                for obj in sorted(obj_types):
+                # Add all nodes
+                for obj in sorted(all_obj_types):
                     node_id = f"{activity_name}__{obj}"
-                    sub.node(node_id, label=obj, shape="ellipse")
+                    shape = "ellipse" if obj in relation_obj_types else "box"
+                    sub.node(node_id, label=obj, shape=shape, style="filled" if obj in lone_obj_types else "")
 
-                # Draw binary edges
+                # Draw relations
                 for (src, tgt), card in edges.items():
                     src_id = f"{activity_name}__{src}"
                     tgt_id = f"{activity_name}__{tgt}"
@@ -126,11 +122,10 @@ class Visualizer:
                         fontsize="20"
                     )
 
-        # Set global graph direction
         dot.attr(rankdir="LR", nodesep="1.0", ranksep="1.0")
         return dot
 
-    def save_aer_diagram(self, relation_model: ActivityERDiagram):
+    def save_aer_diagram(self, relation_model: AER):
         relation_dot = self.draw_aer_diagram(relation_model)
         relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
 

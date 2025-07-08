@@ -1,19 +1,18 @@
 import unittest
 from datetime import datetime, timedelta
 
-from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
-    ActivityObjectRelationMinerLossyCounting, activity_object_relations_miner_lossy_counting
+from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting, ActivityEntityRelationMinerLossyCounting
 from pybeamline.boevent import BOEvent
-from pybeamline.objects.aer_diagram import ActivityERDiagram
+from pybeamline.models.aer import AER
 from pybeamline.utils.cardinality import Cardinality
 from reactivex import from_iterable
 from reactivex.operators import to_list
 
 
-class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
+class TestActivityEntityRelationMinerLossyCounting(unittest.TestCase):
 
     def test_unary_relation_tracking(self):
-        miner = ActivityObjectRelationMinerLossyCounting(max_approx_error=0.1)
+        miner = ActivityEntityRelationMinerLossyCounting(max_approx_error=0.1)
         ts = datetime.now()
 
         events = [
@@ -26,10 +25,10 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
             miner.ingest_event(e)
 
         model = miner.get_model()
-        self.assertEqual({"Order"},model.get_unary_participation("Create"))
+        self.assertEqual(model.get_object_types("Create"), {"Order"})
 
     def test_binary_relation_tracking(self):
-        miner = ActivityObjectRelationMinerLossyCounting(max_approx_error=0.1)
+        miner = ActivityEntityRelationMinerLossyCounting(max_approx_error=0.1)
         ts = datetime.now()
 
         events = [
@@ -47,7 +46,7 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
         self.assertEqual(relations[("Item", "Order")], Cardinality.MANY_TO_ONE)
 
     def test_cardinality_inference(self):
-        miner = ActivityObjectRelationMinerLossyCounting(max_approx_error=0.1)
+        miner = ActivityEntityRelationMinerLossyCounting(max_approx_error=0.1)
         ts = datetime.now()
 
         # Simulate 1..many: 1 Order, 2 Items
@@ -73,7 +72,7 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
 
     def test_lossy_cleanup(self):
         # Low error → small bucket width → frequent cleanup
-        miner = ActivityObjectRelationMinerLossyCounting(max_approx_error=0.25)
+        miner = ActivityEntityRelationMinerLossyCounting(max_approx_error=0.25)
         ts = datetime.now()
 
         events = [
@@ -98,10 +97,10 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
         self.assertEqual(relations[("Customer", "Order")], Cardinality.ONE_TO_MANY)
         self.assertEqual(relations[("Order", "Package")], Cardinality.MANY_TO_MANY)
 
-        self.assertIn("ActivityERDiagram:", model.__str__())
+        self.assertIn("ActivityER:", model.__str__())
         self.assertIn("Ship: Customer → Package [ONE_TO_MANY]", model.__str__())
 
-        expected = "ActivityERDiagram(activities=['Ship'], object_types=['Customer', 'Order', 'Package']"
+        expected = "ActivityER(activities=['Ship'],"
         self.assertIn(expected, model.__repr__())
 
 
@@ -114,18 +113,17 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
             BOEvent("e5", "Reserve", {"Item": {"i5"}}, datetime.now()),
         ]
 
-        miner = activity_object_relations_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.2)
+        miner = activity_entity_relations_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.2)
         result = from_iterable(events).pipe(miner, to_list()).run()
 
         self.assertEqual(len(result), 1)
         model = result[0]
-        unary = model.get_unary_participations()
-        self.assertIn("Reserve", unary)
-        self.assertIn("Item", unary["Reserve"])
-        self.assertIn("ActivityERDiagram:", model.__str__())
+        unary = model.get_object_types("Reserve")
+        self.assertIn("Item", unary)
+        self.assertIn("ActivityER", model.__str__())
 
     def test_unary_to_relation_conversion(self):
-        miner = ActivityObjectRelationMinerLossyCounting(max_approx_error=0.025)
+        miner = ActivityEntityRelationMinerLossyCounting(max_approx_error=0.025)
         ts = datetime.now()
 
         events = [
@@ -146,6 +144,5 @@ class TestActivityObjectRelationMinerLossyCounting(unittest.TestCase):
 
         model = miner.get_model()
         relations = model.get_relations("Register")
-        self.assertEqual(set(), model.get_unary_participation("Register"))
         self.assertIn(("Customer","Order"), relations)
         self.assertEqual(relations[("Customer","Order")], Cardinality.ONE_TO_ONE)

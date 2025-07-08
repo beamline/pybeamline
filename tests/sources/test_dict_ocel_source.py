@@ -1,4 +1,6 @@
 import unittest
+from datetime import datetime
+
 from pybeamline.boevent import BOEvent
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from reactivex import operators as ops
@@ -40,8 +42,12 @@ class TestDictOcelSource(unittest.TestCase):
         # Check if the number of emitted events matches the expected count
         self.assertEqual(len(emitted_events), 115) # 10 + 5 = 15 events from dict and dict2, multiplied by 10 and 5 respectively
         # Check if the emitted events are of type BOEvent
-        for event in emitted_events:
+        for i, event in enumerate(emitted_events):
             self.assertIsInstance(event, BOEvent)
+            self.assertEqual(event.get_event_id(), f"e{i}",)
+            self.assertEqual(event.get_vmap(), {})
+        self.assertIsNotNone(emitted_events[0].to_dict())
+        self.assertEqual(emitted_events[0].__repr__(), str(emitted_events[0]))
 
         # Check that the events are shuffled
         # This is a simple check, as we cannot guarantee the order of the events

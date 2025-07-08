@@ -1,8 +1,8 @@
 import enum
 
 class Command(enum.Enum):
-    DEREGISTER = "deregister"
-    REGISTER = "register"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
 
 def create_command(command: Command, object_type: str) -> dict:
     """

@@ -23,3 +23,15 @@ class TestBEvent(TestCase):
         t = datetime.now()
         e = BEvent("act-a", "case-id", event_time=t)
         self.assertEqual(e.get_event_time(), t)
+
+    def test_get_event_string(self):
+        t = datetime.now()
+        e = BEvent("act-a", "case-id", event_time=t)
+        self.assertIn(f"(act-a, case-id, ProcessName, {t}", str(e))
+
+    def test_get_event_to_dict(self):
+        t = datetime.now()
+        e = BEvent("act-a", "case-id", event_time=t)
+        event_dict = e.to_dict()
+        self.assertIsNotNone(event_dict)
+        self.assertEqual(event_dict["concept:name"], "case-id")

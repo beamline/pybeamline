@@ -1,8 +1,8 @@
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import oc_operator
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
-from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
-from pybeamline.objects.ocdfg import OCDFG
+from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, SlidingWindowStrategy
+from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
 from pybeamline.utils.visualizer import Visualizer
@@ -40,14 +40,15 @@ test_receptonist= [
 
 test_events_phaseflow_ends_early = [
     {"activity": "Register Customer", "objects": {"Customer": ["c2"]}},
+    {"activity": "Register Customer", "objects": {"Item": ["c2"], "Order": ["o2"]}},
     {"activity": "Create Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}},
     {"activity": "Add Item", "objects": {"Order": ["o2"], "Item": ["i2"]}},
     {"activity": "Reserve Item", "objects": {"Item": ["i2"]}},
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-#combined_log = dict_test_ocel_source([(test,10), (test_events_phaseflow, 500)], shuffle=False)
-combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
+#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 50)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -55,9 +56,9 @@ combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
 control_flow = {
     "Order": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
     "Item": lambda : heuristics_miner_lossy_counting(model_update_frequency=5),
-    "Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
-    "Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
-    "Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=1),
+    #"Customer": lambda : heuristics_miner_lossy_counting(model_update_frequency=10, max_approx_error=0.1),
+    #"Shipment": lambda : heuristics_miner_lossy_counting(model_update_frequency=1),
+    #"Invoice": lambda :heuristics_miner_lossy_counting(model_update_frequency=1),
 }
 
 visualizer = Visualizer()
@@ -95,9 +96,11 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
             significant_edge_change(ocdfg_old, ocdfg_new)
 
 
-strategy = LossyCountingStrategy(max_approx_error=0.02)
+strategy = SlidingWindowStrategy(2)
 combined_log.pipe(
-    oc_operator(strategy_handler=strategy),
+    ops.take(10),
+    ops.do_action(print),
+    oc_operator(inclusion_strategy=strategy),
     #ops.do_action(print),
     oc_merge_operator(),
     #ops.do_action(print),
@@ -108,7 +111,7 @@ combined_log.pipe(
 
 print(f"Length of emitted: {len(emitted_models)}")
 # Assert aer_diagram is in the emitted models
-""""
+"""
 for i, m in enumerate(emitted_models):
     aer_diagram = m.get("aer_diagram")
     if aer_diagram is not None:
@@ -120,7 +123,7 @@ visualizer.generate_relation_gif()
 """
 
 for i, m in enumerate(emitted_models):
-    if i%100 == 0:
+    if i%1== 0:
         visualizer.save(m["ocdfg"])
 
 visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=1000)

@@ -1,11 +1,9 @@
-from typing import Dict, Optional, Protocol, Callable, Any, Union, Set, Tuple
+from typing import Dict, Optional, Protocol, Callable, Any, Union, List
 from reactivex import operators as ops, Observable
 from reactivex.subject import Subject
-
-from pybeamline.algorithms.discovery.activity_object_relation_miner_lossy_counting import \
-    activity_object_relations_miner_lossy_counting
-from pybeamline.algorithms.oc.strategies.base import EmissionStrategy, \
-    RelativeFrequencyBasedStrategy, LossyCountingStrategy
+from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting
+from pybeamline.algorithms.oc.strategies.base import InclusionStrategy, \
+    RelativeFrequencyBasedStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 
@@ -17,15 +15,17 @@ class StreamMiner(Protocol):
         ... # pragma: no cover
 
 def oc_operator(
-    strategy_handler: Optional[EmissionStrategy] = None,
+    inclusion_strategy: Optional[InclusionStrategy] = None,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
     aer_model_update_frequency: int = 30,
-    aer_model_max_approx_error: float = 0.01
+    aer_model_max_approx_error: float = 0.01,
+    default_miner: Optional[Callable[[], StreamMiner]] = None,
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
     Factory function to create a configured OCOperator.
-
-    :param strategy_handler:
+    :param inclusion_strategy:
+        Optional object-type concept drift inclusion strategy.
+        Determines when object types should be considered active or inactive.
     :param control_flow:
         Optional dictionary mapping object types (str) to miner factory callables (i.e., `Callable[[], StreamMiner]`).
         If omitted, the operator dynamically registers miners for object types on-the-fly.
@@ -34,9 +34,12 @@ def oc_operator(
     :param aer_model_max_approx_error:
         Maximum approximation error used for lossy counting in the AER miner.
         Smaller values reduce approximation error but increase memory usage.
+    :param default_miner:
+        Optional default miner to use for dynamic mode when no control flow is provided.
+        All object types will use the miner specifications provided in the `default_miner` callable.
     :return:
         A callable that takes an `Observable[BOEvent]` as input and returns an `Observable[dict]` containing
-        emitted models, AER diagrams, and control commands such as register/deregister.
+        emitted models, AER diagrams, and control commands such as active/inactive.
     """
     if control_flow is not None and not isinstance(control_flow, dict):
         raise TypeError("control_flow must be a dict mapping object types to StreamMiner callables.")
@@ -44,29 +47,38 @@ def oc_operator(
         if not callable(miner):
             raise ValueError(f"control_flow values must be StreamMiner callables, got {type(miner).__name__} for '{obj_type}'")
 
-    if strategy_handler is None:
-        strategy_handler = RelativeFrequencyBasedStrategy(0.05)
+    if inclusion_strategy is None:
+        inclusion_strategy = RelativeFrequencyBasedStrategy(0.05)
 
     return OCOperator(
-        strategy_handler=strategy_handler,
+        inclusion_strategy=inclusion_strategy,
         control_flow=control_flow or {},
         aer_model_update_frequency=aer_model_update_frequency,
-        aer_model_max_approx_error=aer_model_max_approx_error
+        aer_model_max_approx_error=aer_model_max_approx_error,
+        default_miner=default_miner
     ).operator
 
 
 class OCOperator:
     """
-    Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
+    Reactive operator for object-centric process mining, managing multiple per-object-type stream miners and an AER (Activity-Entity Relationship) miner.
+    It consumes a stream of BOEvents, dynamically routes and transforms them based on object types, and emits discovered control-flow models
+    (DFGs) and AER diagrams at configurable intervals. Supports both static (predefined miners) and dynamic (on-the-fly) miner registration modes,
+    and integrates an inclusion strategy to control which object-types to be considered downstream.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None, strategy_handler: EmissionStrategy = None ,aer_model_update_frequency: int = 30, aer_model_max_approx_error: float = 0.01):
-        self.__strategy_handler = strategy_handler or RelativeFrequencyBasedStrategy()
-        self.__control_flow = control_flow
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
+                 inclusion_strategy: InclusionStrategy = None,
+                 aer_model_update_frequency: int = 30,
+                 aer_model_max_approx_error: float = 0.01,
+                 default_miner: Optional[Callable[[], StreamMiner]] = None):
+        self.__inclusion_strategy = inclusion_strategy or RelativeFrequencyBasedStrategy()
         self.__dynamic_mode = not bool(control_flow)
+        self.__control_flow = control_flow or {}
+        self.__default_miner = default_miner or (lambda: heuristics_miner_lossy_counting(20))
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
 
-        for obj_type, miner in control_flow.items():
+        for obj_type, miner in self.__control_flow.items():
             self._register_stream(obj_type, miner())
         self._register_aer_stream(aer_model_update_frequency, aer_model_max_approx_error)
 
@@ -76,7 +88,7 @@ class OCOperator:
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects["AERStream"] = subject
-        miner_op = activity_object_relations_miner_lossy_counting(
+        miner_op = activity_entity_relations_miner_lossy_counting(
             model_update_frequency=model_update_frequency,
             control_flow=self.__control_flow,
             max_approx_error=max_approx_error
@@ -84,7 +96,7 @@ class OCOperator:
         aer_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
-                "type": "aer_diagram",
+                "type": "aer",
                 "model": model
             }),
         )
@@ -94,7 +106,6 @@ class OCOperator:
             on_completed=lambda: None
         )
 
-
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
         Register a new miner subject for the given object type.
@@ -102,12 +113,12 @@ class OCOperator:
         """
         subject = Subject[BOEvent]()
         self.__miner_subjects[obj_type] = subject
-        miner_op = miner or heuristics_miner_lossy_counting(20)
+        miner_op = miner or self.__default_miner
 
         dfg_stream = subject.pipe(
             miner_op,
             ops.map(lambda model: {
-                "type": "model",
+                "type": "dfg",
                 "object_type": obj_type,
                 "model": model
             }),
@@ -125,21 +136,32 @@ class OCOperator:
         If dynamic mode is enabled, miners are created on-the-fly if not present.
         """
         self.__miner_subjects["AERStream"].on_next(event)
-        for flat_event in event.flatten():
+        for flat_event in self._flatten(event):
             obj_type = flat_event.get_omap_types()[0]
 
-            if obj_type not in self.__miner_subjects and (self.__dynamic_mode or obj_type in self.__control_flow):
-                if obj_type in self.__control_flow:
-                    # Reregistration of selected miner in control flow
-                    self._register_stream(obj_type, miner=self.__control_flow[obj_type]())
-                else:
-                    # Dynamically create a new miner subject
-                    self._register_stream(obj_type)
-
-            if obj_type not in self.__miner_subjects:
+            if obj_type not in self.__miner_subjects and self.__dynamic_mode:
+                # Dynamically create a new miner subject
+                self._register_stream(obj_type, self.__default_miner())
+            elif obj_type not in self.__miner_subjects:
                 continue
+
             self.__miner_subjects[obj_type].on_next(flat_event)
 
+    def _flatten(self, event: BOEvent) -> List[BOEvent]:
+        flattened_events = []
+        for obj_type, obj_ids in event.omap.items():
+            for obj_id in obj_ids:
+                new_omap = {obj_type: {obj_id}}  # Single-entry omap
+                flattened_events.append(
+                    BOEvent(
+                        event_id=event.event_id,
+                        activity_name=event.activity_name,
+                        timestamp=event.timestamp,
+                        omap=new_omap,
+                        vmap=event.vmap
+                    )
+                )
+        return flattened_events
 
     def get_mode(self) -> bool:
         """
@@ -154,6 +176,6 @@ class OCOperator:
                 ops.do_action(self._route_to_miner),
                 ops.filter(lambda e: not isinstance(e, BOEvent)),
                 ops.merge(self.__output_subject),
-                ops.flat_map(self.__strategy_handler.evaluate),
+                ops.flat_map(self.__inclusion_strategy.evaluate),
             )
         return pipeline

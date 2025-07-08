@@ -8,7 +8,7 @@ from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, Rela
     SlidingWindowStrategy
 from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
-from pybeamline.objects.aer_diagram import ActivityERDiagram
+from pybeamline.models.aer import AER
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from reactivex import operators as ops
 
@@ -23,7 +23,7 @@ class TestOCOperator(unittest.TestCase):
             {"activity": "Create Order", "objects": {"Customer": ["c1"], "Order": ["o1"]}},
             {"activity": "Add Item", "objects": {"Order": ["o1"], "Item": ["i1"]}},
             {"activity": "Add Item", "objects": {"Order": ["o1"], "Item": ["i2"]}},
-            {"activity": "Ship Order", "objects": {"Item": ["i1", "i2"], "Order": ["o1"], "Shipment": ["s1"]}},
+            {"activity": "Ship Order", "objects": {"Item": ["i1", "i2"], "Order": ["o1"], "Shipment": ["s1"], "Invoice": ["inv1"]}}, #Invoice is not used in the control flow
         ]
 
         self.oc_operator_with_control_flow_heuristic = OCOperator(
@@ -46,7 +46,7 @@ class TestOCOperator(unittest.TestCase):
 
         self.operator_without_cf = OCOperator(
             control_flow={},
-            strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.01)
+            inclusion_strategy=RelativeFrequencyBasedStrategy(frequency_threshold=0.01)
         )
 
     def test_oc_operator_mode(self):
@@ -66,7 +66,7 @@ class TestOCOperator(unittest.TestCase):
         emitted_models = []
         ocel_source.pipe(
             self.oc_operator_with_control_flow_heuristic.operator,
-            ops.filter(lambda output: output["type"] == "model" and isinstance(output["model"], HeuristicsNet))
+            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
         ).subscribe(
             on_next=lambda x: emitted_models.append(x),
         )
@@ -83,12 +83,12 @@ class TestOCOperator(unittest.TestCase):
         emitted_models = []
         ocel_source.pipe(
             self.operator_without_cf.operator,
-            ops.filter(lambda output: output["type"] == "model" and isinstance(output["model"], HeuristicsNet))
+            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
         ).subscribe(
             on_next=lambda x: emitted_models.append(x),
         )
         # Check if the number of emitted models matches the expected count
-        self.assertEqual( 27,len(emitted_models))
+        self.assertEqual( 29,len(emitted_models))
         # Check if the control flow is empty aka. Dynamic mode is enabled
         self.assertEqual(True, self.operator_without_cf.get_mode())
         for dictModel in emitted_models:
@@ -97,17 +97,16 @@ class TestOCOperator(unittest.TestCase):
 
     def test_oc_operator_with_cf_heuristic_budget_yields_projected_dfg(self):
         # Generate OCEL source from the events
-        ocel_source = dict_test_ocel_source([(self.events, 10)], shuffle=True)
+        ocel_source = dict_test_ocel_source([(self.events, 50)], shuffle=True)
         emitted_models = []
         ocel_source.pipe(
             self.oc_operator_with_control_flow_heuristic_budget.operator,
-            ops.filter(lambda output: output["type"] == "model" and isinstance(output["model"], HeuristicsNet))
+            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
         ).subscribe(
             on_next=lambda x: emitted_models.append(x),
         )
         # Check if the number of emitted models matches the expected count
-        # Customer = 2*10 = 2, # Order = 4*10 = 4, # Item = 4*10 = 4, # Shipment = 1*10 = 1 # Sum = 2 + 4 + 4 + 1 = 11
-        self.assertEqual(11, len(emitted_models))
+        self.assertEqual(55, len(emitted_models))
 
         for dictModel in emitted_models:
             # Check if the generated model is a HeuristicsNet
@@ -136,7 +135,7 @@ class TestOCOperator(unittest.TestCase):
             self.assertEqual("control_flow values must be StreamMiner callables, got bool for 'Customer'", str(e))
 
     def test_oc_operator_with_freq_threshold(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -151,7 +150,7 @@ class TestOCOperator(unittest.TestCase):
         ocel_source = dict_test_ocel_source([(self.events,5),(events_other_workflow,20)], shuffle=False)
         emitted_models_and_msg = []
         ocel_source.pipe(
-            oc_operator(strategy_handler=RelativeFrequencyBasedStrategy(frequency_threshold=0.15)), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
+            oc_operator(inclusion_strategy=RelativeFrequencyBasedStrategy(frequency_threshold=0.15)), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
         )
@@ -164,11 +163,11 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
 
     def test_oc_operator_aer_diagram_can_forget_relations(self):
         events_with_multiple_items= [
@@ -182,21 +181,21 @@ class TestOCOperator(unittest.TestCase):
             {"activity": "Add Item", "objects": {"Order": ["o1","o2"], "Item": ["i1","i2"]}},
         ]
 
-        ocel_source = dict_test_ocel_source([(events_with_multiple_items, 10), (events_with_single_item_but_multiple_orders,10)], shuffle=False)
+        ocel_source = dict_test_ocel_source([(events_with_multiple_items, 10), (events_with_single_item_but_multiple_orders,20)], shuffle=False)
         emitted_aer_models = []
         ocel_source.pipe(
             oc_operator(aer_model_max_approx_error=0.5, aer_model_update_frequency=30),  # High max_approx_error to trigger forgetting
-            ops.filter(lambda output: output["type"] == "aer_diagram" and isinstance(output["model"], ActivityERDiagram)),
+            ops.filter(lambda output: output["type"] == "aer" and isinstance(output["model"], AER)),
         ).subscribe(
             on_next=lambda x: emitted_aer_models.append(x),
         )
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Add Item")[("Item","Order")])
-        self.assertEqual(Cardinality.MANY_TO_MANY, emitted_aer_models[1]["model"].get_relations("Add Item")[("Item","Order")])
+        self.assertEqual(Cardinality.MANY_TO_MANY, emitted_aer_models[-1]["model"].get_relations("Add Item")[("Item","Order")])
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Create Order")[("Customer","Order")])
-        self.assertEqual(Cardinality.ONE_TO_MANY, emitted_aer_models[1]["model"].get_relations("Create Order")[("Customer","Order")])
+        self.assertEqual(Cardinality.ONE_TO_MANY, emitted_aer_models[-1]["model"].get_relations("Create Order")[("Customer","Order")])
 
     def test_oc_operator_with_strategy_lossy_counting(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -208,10 +207,10 @@ class TestOCOperator(unittest.TestCase):
             {"activity": "Check Out", "objects": {"Guest": ["g1"], "Booking": ["b1"]}}
         ]
 
-        ocel_source = dict_test_ocel_source([(self.events, 5), (events_other_workflow, 20)], shuffle=False)
+        ocel_source = dict_test_ocel_source([(self.events, 10), (events_other_workflow, 30)], shuffle=False)
         emitted_models_and_msg = []
         ocel_source.pipe(
-            oc_operator(strategy_handler=LossyCountingStrategy(max_approx_error=0.02)),
+            oc_operator(inclusion_strategy=LossyCountingStrategy(max_approx_error=0.2)),
             # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
@@ -225,14 +224,14 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
 
     def test_oc_operator_with_strategy_sliding_window(self):
-        should_be_deregistered = [
+        should_be_inactive = [
             "Customer", "Order", "Item", "Shipment"
         ]
         # Sample Dict to generate OCEL source
@@ -247,7 +246,7 @@ class TestOCOperator(unittest.TestCase):
         ocel_source = dict_test_ocel_source([(self.events, 5), (events_other_workflow, 20)], shuffle=False)
         emitted_models_and_msg = []
         ocel_source.pipe(
-            oc_operator(strategy_handler=SlidingWindowStrategy(window_size=5)),
+            oc_operator(inclusion_strategy=SlidingWindowStrategy(window_size=5)),
             # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
@@ -261,9 +260,8 @@ class TestOCOperator(unittest.TestCase):
                 self.assertIsInstance(msg["command"], Command)
                 emitted_commands.append(msg)
             elif msg["type"] == "aer_diagram":
-                self.assertIsInstance(msg["model"], ActivityERDiagram)
+                self.assertIsInstance(msg["model"], AER)
 
         for msg in emitted_commands:
-            print(msg)
-            if msg["command"] == Command.DEREGISTER:
-                self.assertIn(msg["object_type"], should_be_deregistered)
+            if msg["command"] == Command.INACTIVE:
+                self.assertIn(msg["object_type"], should_be_inactive)
