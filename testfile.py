@@ -47,8 +47,8 @@ test_events_phaseflow_ends_early = [
     {"activity": "Cancel Order", "objects": {"Customer": ["c2"], "Order": ["o2"]}}
 ]
 
-combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 50)], shuffle=False)
-#combined_log = ocel_log_source_from_file('tests/ocel2-p2p.json')
+#combined_log = dict_test_ocel_source([(test_events_phaseflow_ends_early,10), (test_events_phaseflow, 50)], shuffle=False)
+combined_log = ocel_log_source_from_file('tests/logistics.jsonocel')
 
 #dict_test_ocel_source([(test_events_phaseflow_ends_early,25),(test_events_phaseflow, 2500)], shuffle=False)
 
@@ -98,6 +98,8 @@ def topology_heuristics(ocdfg_old: OCDFG, ocdfg_new: OCDFG) -> bool:
 
 strategy = SlidingWindowStrategy(2)
 combined_log.pipe(
+    ops.take(10),
+    ops.do_action(print),
     oc_operator(inclusion_strategy=strategy),
     #ops.do_action(print),
     oc_merge_operator(),

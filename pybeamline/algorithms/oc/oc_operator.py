@@ -61,7 +61,10 @@ def oc_operator(
 
 class OCOperator:
     """
-    Object-Centric Reactive Operator for managing obj-type stream miners for processing of BOEvents.
+    Reactive operator for object-centric process mining, managing multiple per-object-type stream miners and an AER (Activity-Entity Relationship) miner.
+    It consumes a stream of BOEvents, dynamically routes and transforms them based on object types, and emits discovered control-flow models
+    (DFGs) and AER diagrams at configurable intervals. Supports both static (predefined miners) and dynamic (on-the-fly) miner registration modes,
+    and integrates an inclusion strategy to control which object-types to be considered downstream.
     """
     def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
                  inclusion_strategy: InclusionStrategy = None,
@@ -69,13 +72,13 @@ class OCOperator:
                  aer_model_max_approx_error: float = 0.01,
                  default_miner: Optional[Callable[[], StreamMiner]] = None):
         self.__inclusion_strategy = inclusion_strategy or RelativeFrequencyBasedStrategy()
-        self.__control_flow = control_flow
         self.__dynamic_mode = not bool(control_flow)
+        self.__control_flow = control_flow or {}
         self.__default_miner = default_miner or (lambda: heuristics_miner_lossy_counting(20))
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
 
-        for obj_type, miner in control_flow.items():
+        for obj_type, miner in self.__control_flow.items():
             self._register_stream(obj_type, miner())
         self._register_aer_stream(aer_model_update_frequency, aer_model_max_approx_error)
 
@@ -102,7 +105,6 @@ class OCOperator:
             on_error=lambda e: print(f"[AER-STREAM] error:", e),
             on_completed=lambda: None
         )
-
 
     def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
         """
