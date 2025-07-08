@@ -67,7 +67,6 @@ for log in logs:
 
 
 def handle_snapshot(snapshot: OCDFG, log_name: str):
-    global logs
     logs[log_name]["snapshots"].append(snapshot)
 
 
