@@ -1,5 +1,4 @@
-from numpy.matlib import empty
-
+"""
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_merge_operator import oc_merge_operator
 from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy
@@ -79,9 +78,10 @@ source.pipe(
 
 # Conform the emitted OCDFGs to the set notation of edges
 def conform_emit_ocdfg(ocdfg: OCDFG) -> set[tuple[str, str, str]]:
-    """
+"""
+"""
     Convert OCDFG to a set of edges in the format (source, object_type, target).
-    """
+
     result = set()
     for obj_type, transitions in ocdfg.edges.items():
         for (src, tgt), freq in transitions.items():
@@ -132,3 +132,4 @@ plt.ylabel("Jaccard Similarity")
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+"""

@@ -70,7 +70,7 @@ def handle_snapshot(snapshot: OCDFG, log_name: str):
     logs[log_name]["snapshots"].append(snapshot)
 
 
-
+"""
 for log in logs:
     logs[log]["snapshots"] = []
     source = ocel_log_source_from_file(logs[log]["filename"])
@@ -87,5 +87,5 @@ for log in logs:
 for log in logs:
     logs[log]["jaccard_similarities"] = []
 
-
+"""
 
