@@ -183,7 +183,7 @@ class BehavioralModelBuilder():
 
             (A, B) = relation
             for (C, D) in self.__B:
-                if C == B:
+                if C == B and depth <= 5:
                     self.__findP_max((C, D), depth + 1)
 
             self.__mark.remove(relation)
@@ -196,7 +196,7 @@ class BehavioralModelBuilder():
             self.__P[relation] = (P_min, max(depth, P_max))
             (A, B) = relation
             for (C, D) in self.__B:
-                if C == B:
+                if C == B and depth <= 5:
                     self.__findP_max((C, D), depth)
 
             self.__mark2.remove(relation)
