@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from pybeamline.abstractevent import AbstractEvent
 
 # These names are from pm4py.objects.log.util.xes which is not imported for performance reasons

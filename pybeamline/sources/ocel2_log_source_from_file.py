@@ -5,16 +5,16 @@ from reactivex.disposable import CompositeDisposable
 from pm4py import OCEL, ocel_sort_by_additional_column, read_ocel2
 from pybeamline.boevent import BOEvent
 
-def ocel_log_source_from_file(log_path: str, ) -> Observable[BOEvent]:
+def ocel2_log_source_from_file(log_path: str, ) -> Observable[BOEvent]:
     """
     Loads an OCEL 2.0 log from a file path and returns it as an Observable of BOEvent objects.
     :param log_path: str
     :return: Observable[BOEvent]
     """
-    return ocel_log_source(read_ocel2(log_path))
+    return ocel2_log_source(read_ocel2(log_path))
 
 
-def ocel_log_source(
+def ocel2_log_source(
     log: OCEL,
     scheduler: Optional[abc.SchedulerBase] = None
 ) -> Observable[BOEvent]:
@@ -22,6 +22,7 @@ def ocel_log_source(
     Converts an OCEL object into an Observable stream of BOEvent objects,
     ordered by timestamp if available.
     """
+    print(log)
     if log.event_timestamp is not None:
         log = ocel_sort_by_additional_column(log, "ocel:timestamp")
 

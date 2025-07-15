@@ -5,10 +5,10 @@ from typing import Dict, Tuple, Set, Any
 @dataclass
 class OCDFG:
     """
-        Object-Centric Directly-Follows Graph (OCDFG) model.
-        This data structure captures object-type-specific control flow in object-centric event logs.
-        For each object type, it maintains a directed multigraph where nodes represent activities,
-        and edges indicate directly-follows relations annotated with frequency counts.
+    Object-Centric Directly-Follows Graph (OCDFG) model.
+    This data structure captures object-type-specific control flow in object-centric event logs.
+    For each object type, it maintains a directed multigraph where nodes represent activities,
+    and edges indicate directly-follows relations annotated with frequency counts.
         Attributes:
             activities (Set[str]):
                 Set of all activity labels observed across all object types.

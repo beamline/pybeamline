@@ -1,18 +1,30 @@
 from typing import Callable, Optional, Dict, Any, Union
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from reactivex import operators as ops, Observable
-
-from pybeamline.boevent import BOEvent
 from pybeamline.utils.commands import Command
 from pybeamline.models.aer import AER
 from pybeamline.models.ocdfg import OCDFG
 
 def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,AER]]]]:
     """
-    Factory function to create an operator that merges object-centric DFGs (OCDFGs)
-    and Activity-Entity Relationship (AER) diagrams from incoming events messages.
-    Must be used after the OC-Operator in a pipeline
+    Factory function to create a reactive operator that merges multiple per-object-type
+    Directly-Follows Graphs (DFGs) and a global Activity-Entity Relationship (AER) model
+    into a unified, synchronised object-centric representation. This operator must be placed
+    downstream of the OCOperator in the pipeline.
+
+    The operator listens to a mixed stream of:
+        - "dfg" messages, containing per-object-type control-flow models (HeuristicsNet)
+        - "command" messages, which dynamically activate or deactivate object types
+        - "aer" messages, representing the latest global AER model mined from events
+
+    It keeps track of the currently active object types, updates internal DFG repositories,
+    and reconstructs a global OCDFG accordingly. Additionally, it prunes the AER model
+    to reflect only activities and relations relevant to the active OCDFG, thereby
+    maintaining semantic consistency across views.
+
     :return:
+        A callable operator that transforms a stream of mixed mining outputs into a stream
+        of synchronised models: a dictionary with keys "ocdfg" (OCDFG) and "aer" (AER).
     """
     manager = OCMergeOperator()
     def operator(stream):
@@ -25,16 +37,13 @@ def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDF
 
 class OCMergeOperator:
     """
-    Stateful manager that keeps the latest DFG (HeuristicsNet) per object type,
-    handles deregistration events, and reconstructs the merged OCDFG on demand.
-    _obj_dfg_repo (Dict[str, HeuristicsNet]):
-        Maps object type -> its current DFG model.
-    _aer_diagram (Optional[AER]):
-        The latest ActivityERDiagram, which is updated with the latest relations
-        and unary participations from the incoming messages.
-    _active_object_types (set[str]):
-        Set of currently active object types, which are included in the merged OCDFG.
-        Based on the commands sent by InclusionStrategy.
+    Stateful manager responsible for maintaining the latest per-object-type
+    control-flow models (HeuristicsNet) and the global Activity-Entity Relationship (AER) model.
+    It processes activation and deactivation commands to track which object types
+    are currently active, constructs a merged OCDFG accordingly, and prunes the AER
+    model to include only activities and object-type relations relevant to the current OCDFG.
+    This ensures a synchronised and coherent representation of both control-flow
+    and structural relationships in the process.
     """
     def __init__(self):
         self._obj_dfg_repo: Dict[str, HeuristicsNet] = {}

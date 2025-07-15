@@ -15,6 +15,19 @@ class Visualizer:
         self.snapshots_relation = []
         self.current_index = 0
         self.snapshot_dir = os.path.join(os.getcwd(), "snapshots")
+        self.predefined_colors = [
+            "#1f77b4",  # blue
+            "#ff7f0e",  # orange
+            "#2ca02c",  # green
+            "#d62728",  # red
+            "#9467bd",  # purple
+            "#8c564b",  # brown
+            "#e377c2",  # pink
+            "#7f7f7f",  # gray
+            "#bcbd22",  # yellow-green
+            "#17becf",  # cyan
+        ]
+        self.predefined_index = 0
 
         if not os.path.exists(self.snapshot_dir):
             os.makedirs(self.snapshot_dir)
@@ -26,9 +39,15 @@ class Visualizer:
 
     def _get_color(self, obj_type: str):
         if obj_type not in self.object_type_colors:
-            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-            while color in self.object_type_colors.values():
+            # Use predefined color if available
+            if self.predefined_index < len(self.predefined_colors):
+                color = self.predefined_colors[self.predefined_index]
+                self.predefined_index += 1
+            else:
+                # Fallback to random, but avoid duplicates
                 color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+                while color in self.object_type_colors.values():
+                    color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             self.object_type_colors[obj_type] = color
         return self.object_type_colors[obj_type]
 
@@ -62,7 +81,7 @@ class Visualizer:
 
         return dot
 
-    def save(self, ocdfg: OCDFG):
+    def save_ocdfg(self, ocdfg: OCDFG):
         ocdfg_dot = self.draw_ocdfg(ocdfg)
         # Save ocdfg
         ocdfg_path = os.path.join(self.snapshot_dir, f"ocdfg_snapshot_{self.counter}")
@@ -107,8 +126,8 @@ class Visualizer:
                 # Add all nodes
                 for obj in sorted(all_obj_types):
                     node_id = f"{activity_name}__{obj}"
-                    shape = "ellipse" if obj in relation_obj_types else "box"
-                    sub.node(node_id, label=obj, shape=shape, style="filled" if obj in lone_obj_types else "")
+                    shape = "ellipse"
+                    sub.node(node_id, label=obj, shape=shape)
 
                 # Draw relations
                 for (src, tgt), card in edges.items():
@@ -127,7 +146,7 @@ class Visualizer:
 
     def save_aer_diagram(self, relation_model: AER):
         relation_dot = self.draw_aer_diagram(relation_model)
-        relation_path = os.path.join(self.snapshot_dir, f"relation_snapshot_{self.counter}")
+        relation_path = os.path.join(self.snapshot_dir, f"aer_snapshot_{self.counter}")
 
         relation_dot.render(relation_path, cleanup=True, format="png")
         self.snapshots_relation.append(relation_path)
@@ -151,7 +170,7 @@ class Visualizer:
         )
         print(f"[GIF] Saved to {out_file}")
 
-    def generate_relation_gif(self, out_file="relation_evolution.gif", duration=1500):
+    def generate_aer_gif(self, out_file="relation_evolution.gif", duration=1500):
         if not self.snapshots_relation:
             print("No relation snapshots to include in GIF.")
             return

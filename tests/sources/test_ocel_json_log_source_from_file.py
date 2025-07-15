@@ -4,21 +4,21 @@ from reactivex import Observable
 from reactivex import operators as ops
 
 from pybeamline.boevent import BOEvent
-from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
+from pybeamline.sources.ocel2_log_source_from_file import ocel2_log_source_from_file
 
 
 class TestOcelJsonLogSource(unittest.TestCase):
     def test_generate_ocel_source_from_file_with_wrong_path(self):
         test_file_path = "non_existent_file.jsonocel"
         with self.assertRaises(Exception) as context:
-            ocel_log_source_from_file(test_file_path)
+            ocel2_log_source_from_file(test_file_path)
         self.assertIn("File does not exist", str(context.exception))
 
     def test_generate_ocel_source_from_file(self):
         # Path to the test file
         test_file_path = "tests/logistics.jsonocel"
         # Generate OCEL from the test file
-        ocel_source = ocel_log_source_from_file(test_file_path)
+        ocel_source = ocel2_log_source_from_file(test_file_path)
         # Check if the generated OCEL is not None
         self.assertIsInstance(ocel_source, Observable)
         # Capture first 10 events

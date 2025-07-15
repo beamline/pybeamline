@@ -10,7 +10,7 @@ from pybeamline.models import ocdfg
 from pm4py.algo.discovery.ocel.ocdfg import algorithm as ocdfg_discovery
 from reactivex import operators as ops, Subject
 from pybeamline.models.ocdfg import OCDFG
-from pybeamline.sources.ocel_log_source_from_file import ocel_log_source_from_file
+from pybeamline.sources.ocel2_log_source_from_file import ocel2_log_source_from_file
 from reactivex import zip as rx_zip
 
 logs = { "Logistics": { "filename": "../tests/logistics.jsonocel"}}
