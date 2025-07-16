@@ -22,7 +22,6 @@ def ocel2_log_source(
     Converts an OCEL object into an Observable stream of BOEvent objects,
     ordered by timestamp if available.
     """
-    print(log)
     if log.event_timestamp is not None:
         log = ocel_sort_by_additional_column(log, "ocel:timestamp")
 

@@ -1,4 +1,4 @@
-pm4py~=2.7.13
+pm4py~=2.7.16
 reactivex==4.0.4
 paho-mqtt==2.1.0
 pandas~=2.2.3
