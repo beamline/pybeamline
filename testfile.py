@@ -57,7 +57,7 @@ def append_emitted(m):
     Callback to append emitted OCDFGs to the list.
     """
     emitted_models.append(m)
-
+"""
 
 strategy = RelativeFrequencyBasedStrategy(frequency_threshold=0.002)
 combined_log.pipe(
@@ -92,7 +92,7 @@ for i, m in enumerate(emitted_models):
         print(f"Model {i+1} does not contain an OCDFG.")
 
 visualizer.generate_ocdfg_gif(out_file="ocdfg_evolution.gif", duration=500)
-
+"""
 #for i, m in enumerate(emitted_models):
 #    if i%1== 0:
 #        visualizer.save(m["ocdfg"])
