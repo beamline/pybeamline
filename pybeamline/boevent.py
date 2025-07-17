@@ -1,8 +1,5 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Set
-
-from lxml.html.defs import event_attrs
-
 from pybeamline.abstractevent import AbstractEvent
 
 DEFAULT_EVENT_ID = "ocel:eid"
@@ -18,7 +15,7 @@ class BOEvent(AbstractEvent):
 
     def __init__(self, event_id: str, activity_name: str, omap: Dict[str, Set[str]], timestamp: Optional[datetime] = None, vmap: Optional[Dict[str, str]] = None):
         """
-        Represents a single event aligned with OCEL 2.0 specification.
+        Represents a single event aligned with OCEL specification.
         :param event_id: Unique event identifier (ocel:eid)
         :param activity_name: Name of the activity (ocel:activity)
         :param timestamp: Timestamp of the event (ocel:timestamp)

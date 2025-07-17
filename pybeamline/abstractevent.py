@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-
+# Facilitates the work of an interface for event handling in a system.
 class AbstractEvent(ABC):
 
     @abstractmethod

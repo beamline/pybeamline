@@ -17,8 +17,8 @@ class StreamMiner(Protocol):
 def oc_operator(
     inclusion_strategy: Optional[InclusionStrategy] = None,
     control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
-    aer_model_update_frequency: int = 30,
-    aer_model_max_approx_error: float = 0.01,
+    aer_model_update_frequency: Optional[int] = 30,
+    aer_model_max_approx_error: Optional[float] = 0.01,
     default_miner: Optional[Callable[[], StreamMiner]] = None,
 ) -> Callable[[Observable[BOEvent]], Observable[dict]]:
     """
@@ -68,8 +68,8 @@ class OCOperator:
     """
     def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
                  inclusion_strategy: InclusionStrategy = None,
-                 aer_model_update_frequency: int = 30,
-                 aer_model_max_approx_error: float = 0.01,
+                 aer_model_update_frequency: Optional[int] = 30,
+                 aer_model_max_approx_error: Optional[float] = 0.01,
                  default_miner: Optional[Callable[[], StreamMiner]] = None):
         self.__inclusion_strategy = inclusion_strategy or RelativeFrequencyBasedStrategy()
         self.__dynamic_mode = not bool(control_flow)
