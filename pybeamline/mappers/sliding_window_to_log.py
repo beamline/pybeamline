@@ -1,25 +1,19 @@
 from typing import List, Callable
 from reactivex import Observable, empty, just
 from reactivex import operators as ops
+
+from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
 from pandas import DataFrame
 
-
-def list_to_log(events: List[BEvent]) -> DataFrame:
-    list_of_events = []
-    for e in events:
-        data_attributes = e.event_attributes
-        data_attributes.update({"case:" + n: e.trace_attributes[n] for n in e.trace_attributes})
-        data_attributes.update({"process:" + n: e.process_attributes[n] for n in e.process_attributes})
-        list_of_events.append(data_attributes)
-    log = DataFrame(list_of_events)
-    return log
+def list_to_log(events: List[AbstractEvent]) -> DataFrame:
+    return DataFrame([e.to_dict() for e in events])
 
 
-def sliding_window_to_log() -> Callable[[Observable[Observable[BEvent]]], Observable[DataFrame]]:
-    def o2l(obs: Observable[BEvent]) -> Observable[DataFrame]:
+def sliding_window_to_log() -> Callable[[Observable[Observable[AbstractEvent]]], Observable[DataFrame]]:
+    def o2l(obs: Observable[AbstractEvent]) -> Observable[DataFrame]:
         return obs.pipe(
-            ops.to_iterable(),
+            ops.to_iterable(),  # Converts Observable[AbstractEvent] → Iterable[AbstractEvent]
             ops.flat_map(lambda x: empty() if not x else just(list_to_log(x)))
         )
 

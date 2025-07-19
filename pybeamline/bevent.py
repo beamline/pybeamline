@@ -1,4 +1,5 @@
 from datetime import datetime
+from pybeamline.abstractevent import AbstractEvent
 
 # These names are from pm4py.objects.log.util.xes which is not imported for performance reasons
 DEFAULT_NAME_KEY = 'concept:name'
@@ -6,7 +7,8 @@ DEFAULT_TIMESTAMP_KEY = 'time:timestamp'
 DEFAULT_TRACEID_KEY = 'concept:name'
 
 
-class BEvent:
+class BEvent(AbstractEvent):
+
     def __init__(self, activity_name, case_id, process_name="ProcessName", event_time=None):
         self.process_attributes = dict()
         self.trace_attributes = dict()
@@ -39,3 +41,15 @@ class BEvent:
             str({c: self.trace_attributes[c] for c in self.trace_attributes.keys() - {DEFAULT_TRACEID_KEY}}),
             str({c: self.process_attributes[c] for c in self.process_attributes.keys() - {DEFAULT_NAME_KEY}})
         )
+
+    def to_dict(self):
+        return {
+            DEFAULT_NAME_KEY: self.get_event_name(),
+            DEFAULT_TIMESTAMP_KEY: self.get_event_time(),
+            DEFAULT_TRACEID_KEY: self.get_trace_name(),
+            "process_attributes": self.process_attributes,
+            "trace_attributes": self.trace_attributes,
+            "event_attributes": self.event_attributes
+        }
+
+

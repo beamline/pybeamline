@@ -15,3 +15,6 @@ A complete Jupyter notebook presenting all techniques available is available at 
 <a href="https://colab.research.google.com/github/beamline/pybeamline/blob/master/tutorial.ipynb" target="_blank">
 <img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg">
 </img></a>
+
+[![codecov](https://codecov.io/gh/JepMik/pybeamline-OCPM/branch/master/graph/badge.svg)](https://codecov.io/gh/JepMik/pybeamline-OCPM)
+
