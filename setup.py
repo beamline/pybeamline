@@ -23,7 +23,7 @@ setup(
         "pybeamline.algorithms.conformance",
         "pybeamline.algorithms.discovery",
     ],
-    version="1.0.8",
+    version="1.1.0",
     description="Python version of Beamline (based on ReactiveX)",
     long_description=long_description,
     long_description_content_type="text/markdown",
