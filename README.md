@@ -11,13 +11,12 @@ For a complete documentation of the library see https://www.beamline.cloud/pybea
 pip install pybeamline
 ```
 Complete Jupyter notebooks presenting all techniques available are available at
-* Classical process mining: https://github.com/beamline/pybeamline/blob/master/tutorial.ipynb <a href="https://colab.research.google.com/github/beamline/pybeamline/blob/master/tutorial.ipynb" target="_blank">
-<img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg">
-</img></a>
-* Object-centric Process mining: https://github.com/beamline/pybeamline/blob/master/tutorial_oc.ipynb <a href="https://colab.research.google.com/github/beamline/pybeamline/blob/master/tutorial_oc.ipynb" target="_blank">
-<img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg">
-</img></a>
+* Classical process mining: https://github.com/beamline/pybeamline/blob/master/tutorial.ipynb
+* Object-centric Process mining: https://github.com/beamline/pybeamline/blob/master/tutorial_oc.ipynb
 
+
+<a href="https://colab.research.google.com/github/beamline/pybeamline/blob/master/tutorial.ipynb" target="_blank"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></img></a> Classic Process Mining<br>
+<a href="https://colab.research.google.com/github/beamline/pybeamline/blob/master/tutorial_oc.ipynb" target="_blank"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></img></a> Object Centric Process Mining
 
 [![codecov](https://codecov.io/gh/JepMik/pybeamline-OCPM/branch/master/graph/badge.svg)](https://codecov.io/gh/JepMik/pybeamline-OCPM)
 
