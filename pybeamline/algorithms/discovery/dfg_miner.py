@@ -34,7 +34,7 @@ def simple_dfg_miner(
             max_frequency = max(complete_dfg.values())
             if max_frequency > 0:
                 m = {k: v/max_frequency for k, v in complete_dfg.items() if v/max_frequency > min_relative_frequency}
-                return m
+                return (observed_events, m)
         return None
 
     return lambda stream: stream.pipe(

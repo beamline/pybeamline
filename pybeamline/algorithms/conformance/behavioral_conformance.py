@@ -9,12 +9,15 @@ from pybeamline.sources import xes_log_source_from_file
 
 def behavioral_conformance(model) -> Callable[[Observable[BEvent]], Observable[tuple]]:
     bc = BehavioralConformance(M=model)
+    observed_events = 0
 
     def conformance_checker(event: BEvent) -> Observable[tuple]:
+        nonlocal observed_events
+        observed_events += 1
         bc.ingest_event(event)
         case_id = event.get_trace_name()
         if case_id in bc.get_conformance():
-            return just((bc.get_conformance(case_id), bc.get_confidence(case_id), bc.get_completeness(case_id)))
+            return just((bc.get_conformance(case_id), bc.get_confidence(case_id), bc.get_completeness(case_id),observed_events))
         else:
             return empty()
 
