@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting, ActivityEntityRelationMinerLossyCounting
 from pybeamline.boevent import BOEvent
-from pybeamline.models.aer import AER
 from pybeamline.utils.cardinality import Cardinality
 from reactivex import from_iterable
 from reactivex.operators import to_list

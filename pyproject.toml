@@ -1,0 +1,47 @@
+[project]
+name = "pybeamline"
+version = "1.1.2"
+requires-python = ">=3.9"
+readme = "README.md"
+authors = [
+    { name = "Andrea Burattin" }
+]
+license = { text = "Apache-2.0" }
+
+dependencies = [
+    "graphviz>=0.20,<1.0",
+    "objsize>=0.7,<1.0",
+    "paho-mqtt>=2.1,<3.0",
+    "pandas>=2.2,<3.0",
+    "pm4py~=2.7.16",
+    "pyais>=2.8,<3.0",
+    "reactivex==4.0.4",
+    "requests>=2.31,<3.0",
+    "river==0.21.2",
+    "typing_extensions>=4.0,<5.0"
+]
+
+[tool.setuptools]
+packages = [
+    "pybeamline",
+    "pybeamline.filters",
+    "pybeamline.sources",
+    "pybeamline.stream",
+    "pybeamline.sources.real",
+    "pybeamline.mappers",
+    "pybeamline.algorithms",
+    "pybeamline.algorithms.conformance",
+    "pybeamline.algorithms.discovery",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "build",
+    "pip-tools",
+    "tox>=4.0"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

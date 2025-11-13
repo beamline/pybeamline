@@ -1,0 +1,161 @@
+import threading
+
+from reactivex import operators as ops, Observable, from_iterable, create, concat, empty, from_, merge
+from typing import Callable, Any, List, Optional, Generic, TypeVar, Iterable
+
+from reactivex.disposable import Disposable
+
+from pybeamline.sources import xes_log_source_from_file
+from pybeamline.stream.base_operator import BaseOperator
+from pybeamline.stream.base_sink import BaseSink
+from pybeamline.stream.base_source import BaseSource
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+
+class Stream(Generic[T]):
+
+    def __init__(self, observable: Observable[T], value_type: type = None):
+        self._observable: Observable[T] = observable
+        self._value_type = value_type
+
+    @staticmethod
+    def of(*args: T) -> 'Stream[T]':
+        return Stream(from_iterable(args), value_type=type(args[0]) if args else None)
+
+    @staticmethod
+    def from_iterable(iterable: Iterable[T]) -> 'Stream[T]':
+        return Stream(from_(iterable))
+
+    @staticmethod
+    def empty():
+        return Stream(empty())
+
+    @staticmethod
+    def source(base_source: BaseSource[T]) -> 'Stream[T]':
+        def on_subscribe(observer, scheduler=None):
+
+            completed_event = threading.Event()
+
+            def _on_completed():
+                completed_event.set()
+                observer.on_completed()
+
+            base_source.on_next = lambda item: observer.on_next(item)
+            base_source.on_completed = _on_completed
+            base_source.on_error = lambda e: observer.on_error(e)
+
+            def _run_read():
+                try:
+                    base_source.read()
+                finally:
+                    if not completed_event.is_set():
+                        observer.on_completed()
+
+            thread = threading.Thread(target=_run_read, daemon=True)
+            thread.start()
+
+            def dispose():
+                if hasattr(base_source, "close"):
+                    try:
+                        base_source.close()
+                    except Exception:
+                        pass
+
+            return Disposable(dispose)
+
+        return Stream(create(on_subscribe))
+
+
+    def sink(self, base_sink: BaseSink[T], blocking: bool = True) -> Disposable:
+        completed_event = threading.Event()
+
+        def on_next(item):
+            base_sink.write(item)
+
+        def on_completed():
+            base_sink.close()
+            completed_event.set()
+
+        def on_error(e: Exception):
+            try:
+                base_sink.close()
+            finally:
+                completed_event.set()
+            raise e
+
+        subscription = self._observable.subscribe(
+            on_next=on_next,
+            on_error=on_error,
+            on_completed=on_completed
+        )
+
+        if blocking:
+            completed_event.wait()
+
+        return subscription
+
+    @staticmethod
+    def from_xes_log_file(path: str) -> 'Stream[Any]':
+        return Stream(xes_log_source_from_file(path))
+
+    def map(self, func: Callable[[T], R]) -> 'Stream[R]':
+        return Stream(self._observable.pipe(ops.map(func)))
+
+    def filter(self, func: Callable[[T], bool]) -> 'Stream[T]':
+        return Stream(self._observable.pipe(ops.filter(func)))
+
+    def flat_map(self, func: Callable[[T], Observable[R]]) -> 'Stream[R]':
+        return Stream(self._observable.pipe(ops.flat_map(func)))
+
+    def all_match(self, predicate: Callable[[T], bool]) -> bool:
+        return self._observable.pipe(ops.all(predicate)).run()
+
+    def find_first(self) -> Optional[T]:
+        return self._observable.pipe(
+            ops.first_or_default(default_value=None)
+        ).run()
+
+    def find_any(self) -> Optional[T]:
+        return self.find_first()
+
+    def to_list(self) -> List[T]:
+        result: List[T] = []
+        self._observable.subscribe(result.append)
+        return result
+
+    def subscribe(
+        self,
+        on_next: Optional[Callable[[T], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
+        on_completed: Optional[Callable[[], None]] = None
+    ):
+        return self._observable.subscribe(
+            on_next=on_next,
+            on_error=on_error,
+            on_completed=on_completed,
+        )
+
+    def to_observable(self) -> Observable[T]:
+        return self._observable
+
+    def pipe(self, *operators: BaseOperator['Stream[Any]', 'Stream[Any]']) -> 'Stream[Any]':
+        stream: Stream[Any] = self
+        for op in operators:
+            stream = op(stream)
+        return stream
+
+
+    def merge(self, *others: 'Stream[T]') -> 'Stream[T]':
+        observables = [self._observable] + [o._observable for o in others]
+        concatenated = merge(*observables)
+        return Stream(concatenated, value_type=self._value_type)
+
+    def concat(self, *others: 'Stream[T]') -> 'Stream[T]':
+        observables = [self._observable] + [o._observable for o in others]
+        concatenated = concat(*observables)
+        return Stream(concatenated, value_type=self._value_type)
+
+
+
