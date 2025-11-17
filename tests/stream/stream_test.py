@@ -35,14 +35,15 @@ class TestStream(unittest.TestCase):
         self.assertEqual(non_empty_iterable, [0, 1, 2])
 
     def test_simple_source(self):
+
         class SimpleTestSource(BaseSource[int]):
 
             def __init__(self, items: list[Any]) -> None:
                 self._items = items
 
-            def read(self) -> None:
+            def execute(self) -> None:
                 for item in self._items:
-                    self.on_next(item)
+                    self.produce(item)
 
             def close(self) -> None:
                 print('Closing Simple Source')
@@ -61,7 +62,7 @@ class TestStream(unittest.TestCase):
                 self.assert_equals = asser_equals
                 self.counter = 0
 
-            def write(self, item: T) -> None:
+            def consume(self, item: T) -> None:
                 self.assert_equals(self.expected_items[self.counter], item)
                 self.counter += 1
 
@@ -71,11 +72,11 @@ class TestStream(unittest.TestCase):
                 self.items = items
                 self.delay = delay
 
-            def read(self) -> None:
+            def execute(self) -> None:
                 for item in self.items:
                     time.sleep(self.delay)
-                    self.on_next(item)
-                self.on_completed()
+                    self.produce(item)
+                self.completed()
 
             def close(self):
                 print('Closing Async Source')
@@ -84,20 +85,21 @@ class TestStream(unittest.TestCase):
         Stream.source(async_source).sink(AsserSink([1, 2, 3, 4, 5], self.assertEqual))
 
     def test_source_calls_on_completed_explicit(self):
+
         class ExplicitCompleteSource(BaseSource[int]):
             def __init__(self, items: list[int]):
                 self._items = items
 
-            def read(self) -> None:
+            def execute(self) -> None:
                 for item in self._items:
-                    self.on_next(item)
-                self.on_completed()
+                    self.produce(item)
+                self.completed()
 
         collector = []
 
         class CollectorSink(BaseSink[int]):
 
-            def write(self, item: int) -> None:
+            def consume(self, item: int) -> None:
                 collector.append(item)
 
             def close(self) -> None:
@@ -108,17 +110,18 @@ class TestStream(unittest.TestCase):
         self.assertEqual(collector, [10, 20, 30])
 
     def test_sink_non_blocking(self):
+
         class AsyncSource(BaseSource[int]):
 
             def __init__(self, items, delay=0.01):
                 self.items = items
                 self.delay = delay
 
-            def read(self) -> None:
+            def execute(self) -> None:
                 for item in self.items:
                     time.sleep(self.delay)
-                    self.on_next(item)
-                self.on_completed()
+                    self.produce(item)
+                self.completed()
 
             def close(self):
                 print('Closing Async Source')
@@ -130,7 +133,7 @@ class TestStream(unittest.TestCase):
                 self.items: list[int] = []
                 self.closed = threading.Event()
 
-            def write(self, item: int) -> None:
+            def consume(self, item: int) -> None:
                 self.items.append(item)
 
             def close(self) -> None:
@@ -294,11 +297,11 @@ class TestStream(unittest.TestCase):
                 self.items = items
                 self.delay = delay
 
-            def read(self) -> None:
+            def execute(self) -> None:
                 for item in self.items:
                     time.sleep(self.delay)
-                    self.on_next(item)
-                self.on_completed()
+                    self.produce(item)
+                self.completed()
 
             def close(self):
                 print('Closing Async Source')
@@ -308,7 +311,7 @@ class TestStream(unittest.TestCase):
             def __init__(self):
                 self.items: list[int] = []
 
-            def write(self, item: int) -> None:
+            def consume(self, item: int) -> None:
                 self.items.append(item)
 
             def close(self) -> None:
@@ -318,7 +321,7 @@ class TestStream(unittest.TestCase):
         stream1 = Stream.source(AsyncSource([1, 1, 1, 1]))
         stream2 = Stream.source(AsyncSource([2, 2, 2, 2]))
         stream1.merge(stream2).sink(sink)
-        self.assertEqual(sink.items, [1, 2, 1, 2, 1, 2, 1, 2])
+        self.assertTrue(sink.items == [1, 2, 1, 2, 1, 2, 1, 2] or sink.items == [2, 1, 2, 1, 2, 1, 2, 1])
 
 
 

@@ -1,38 +1,13 @@
 import random
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict
-from reactivex import Observable, abc
-from reactivex.disposable import CompositeDisposable
+from reactivex import abc
 from pybeamline.boevent import BOEvent
+from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.stream import Stream
 
 
-def generate_shuffled_traces(flows: List[Tuple[List[dict], int]], shuffle: bool = True) -> List[dict]:
-    all_traces = []
-    trace_id = 0
-
-    for flow_template, repetitions in flows:
-        for _ in range(repetitions):
-            trace = []
-            suffix = f"{trace_id}"
-            for event in flow_template:
-                updated_event = {
-                    "activity": event["activity"],
-                    "objects": {
-                        obj_type: [f"{oid}_{suffix}" for oid in obj_ids]
-                        for obj_type, obj_ids in event["objects"].items()
-                    }
-                }
-                trace.append(updated_event)
-            all_traces.append(trace)
-            trace_id += 1
-
-    if shuffle:
-        random.shuffle(all_traces)
-
-    return [event for trace in all_traces for event in trace]
-
-
-def dict_test_ocel_source(flows: List[Tuple[List[dict], int]], shuffle: bool = False, scheduler: Optional[abc.SchedulerBase] = None) -> Observable[BOEvent]:
+def dict_test_ocel_source(flows: List[Tuple[List[dict], int]], shuffle: bool = False, scheduler: Optional[abc.SchedulerBase] = None) -> Stream[BOEvent]:
     """
     :param flows: A list of tuples, where each tuple is of the form (flow_template, repetitions).
                   - flow_template is a list of event dictionaries with keys "activity" and "objects".
@@ -52,11 +27,19 @@ def dict_test_ocel_source(flows: List[Tuple[List[dict], int]], shuffle: bool = F
     :param scheduler: (Optional) A ReactiveX scheduler to control event emission timing.
     :return: An Observable stream of BOEvent objects, one per event.
     """
-    def subscribe(observer: abc.ObserverBase[BOEvent], scheduler_: Optional[abc.SchedulerBase] = None) -> abc.DisposableBase:
-        all_events = generate_shuffled_traces(flows, shuffle=shuffle)
-        for idx, event in enumerate(all_events):
+    return Stream.source(DictTestOcelSource(flows, shuffle))
 
-            omap: Dict[str,set[str]] = {
+
+class DictTestOcelSource(BaseSource[BOEvent]):
+
+    def __init__(self, flows: List[Tuple[List[dict], int]], shuffle: bool = False):
+        self.flows = flows
+        self.shuffle = shuffle
+
+    def execute(self):
+        all_events = self.generate_shuffled_traces()
+        for idx, event in enumerate(all_events):
+            omap: Dict[str, set[str]] = {
                 obj_type: set(ids)
                 for obj_type, ids in event["objects"].items()
             }
@@ -68,11 +51,31 @@ def dict_test_ocel_source(flows: List[Tuple[List[dict], int]], shuffle: bool = F
                 omap=omap,
                 vmap=None,
             )
-            observer.on_next(bo_event)
+            self.produce(bo_event)
 
-        observer.on_completed()
-        return CompositeDisposable()
+        self.completed()
 
-    return Observable(subscribe)
+    def generate_shuffled_traces(self) -> List[dict]:
+        all_traces = []
+        trace_id = 0
 
+        for flow_template, repetitions in self.flows:
+            for _ in range(repetitions):
+                trace = []
+                suffix = f"{trace_id}"
+                for event in flow_template:
+                    updated_event = {
+                        "activity": event["activity"],
+                        "objects": {
+                            obj_type: [f"{oid}_{suffix}" for oid in obj_ids]
+                            for obj_type, obj_ids in event["objects"].items()
+                        }
+                    }
+                    trace.append(updated_event)
+                all_traces.append(trace)
+                trace_id += 1
 
+        if self.shuffle:
+            random.shuffle(all_traces)
+
+        return [event for trace in all_traces for event in trace]

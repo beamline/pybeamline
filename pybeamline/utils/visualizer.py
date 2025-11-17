@@ -1,6 +1,6 @@
 import os
 from PIL import Image
-from graphviz import Digraph, Graph
+from graphviz import Digraph
 import random
 from graphviz import Graph
 

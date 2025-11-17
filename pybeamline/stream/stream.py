@@ -5,7 +5,6 @@ from typing import Callable, Any, List, Optional, Generic, TypeVar, Iterable
 
 from reactivex.disposable import Disposable
 
-from pybeamline.sources import xes_log_source_from_file
 from pybeamline.stream.base_operator import BaseOperator
 from pybeamline.stream.base_sink import BaseSink
 from pybeamline.stream.base_source import BaseSource
@@ -34,6 +33,7 @@ class Stream(Generic[T]):
 
     @staticmethod
     def source(base_source: BaseSource[T]) -> 'Stream[T]':
+
         def on_subscribe(observer, scheduler=None):
 
             completed_event = threading.Event()
@@ -42,18 +42,18 @@ class Stream(Generic[T]):
                 completed_event.set()
                 observer.on_completed()
 
-            base_source.on_next = lambda item: observer.on_next(item)
-            base_source.on_completed = _on_completed
-            base_source.on_error = lambda e: observer.on_error(e)
+            base_source.produce = lambda item: observer.on_next(item)
+            base_source.completed = _on_completed
+            base_source.error = lambda e: observer.on_error(e)
 
-            def _run_read():
+            def _execute():
                 try:
-                    base_source.read()
+                    base_source.execute()
                 finally:
                     if not completed_event.is_set():
                         observer.on_completed()
 
-            thread = threading.Thread(target=_run_read, daemon=True)
+            thread = threading.Thread(target=_execute, daemon=True)
             thread.start()
 
             def dispose():
@@ -72,7 +72,7 @@ class Stream(Generic[T]):
         completed_event = threading.Event()
 
         def on_next(item):
-            base_sink.write(item)
+            base_sink.consume(item)
 
         def on_completed():
             base_sink.close()
@@ -96,9 +96,10 @@ class Stream(Generic[T]):
 
         return subscription
 
-    @staticmethod
-    def from_xes_log_file(path: str) -> 'Stream[Any]':
-        return Stream(xes_log_source_from_file(path))
+
+#    @staticmethod
+#    def from_xes_log_file(path: str) -> 'Stream[Any]':
+#        return Stream(xes_log_source_from_file(path))
 
     def map(self, func: Callable[[T], R]) -> 'Stream[R]':
         return Stream(self._observable.pipe(ops.map(func)))
@@ -157,5 +158,9 @@ class Stream(Generic[T]):
         concatenated = concat(*observables)
         return Stream(concatenated, value_type=self._value_type)
 
+    def share(self) -> 'Stream[T]':
+        return Stream(self._observable.pipe(ops.share()), value_type=self._value_type)
 
-
+    def publish(self) -> tuple['Stream[T]', object]:
+        connectable = self._observable.pipe(ops.publish())
+        return Stream(connectable, value_type=self._value_type), connectable

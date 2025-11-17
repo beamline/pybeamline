@@ -6,7 +6,7 @@ T = TypeVar("T")
 class BaseSink(ABC, Generic[T]):
 
     @abstractmethod
-    def write(self, item: T) -> None:
+    def consume(self, item: T) -> None:
         pass
 
     def close(self) -> None:

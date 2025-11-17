@@ -1,21 +1,20 @@
-import reactivex
-from pybeamline.sources.real.ais import _fetch_ais_source
-from pybeamline.sources.real.wikimedia import _fetch_wikimedia_stream
-from pybeamline.sources.real.rejseplanen import _fetch_rejseplanen_trains
+from pybeamline.bevent import BEvent
+from pybeamline.sources.real.ais import AisSource
+from pybeamline.sources.real.rejseplanen import RejseplanenSource
+from pybeamline.sources.real.wikimedia import WikimediaSource
+from pybeamline.stream.stream import Stream
 
 
-def wikimedia_source():
-    return reactivex.create(_fetch_wikimedia_stream)
+def wikimedia_source() -> Stream[BEvent]:
+    return Stream.source(WikimediaSource())
 
 
-def ais_source(host='153.44.253.27', port=5631):
-    def fetch_with_params(observer, _):
-        return _fetch_ais_source(observer, host, port)
-    return reactivex.create(fetch_with_params)
+def ais_source(host='153.44.253.27', port=5631) -> Stream[BEvent]:
+    return Stream.source(AisSource(host, port))
 
 
-def rejseplanen_source():
-    return reactivex.create(_fetch_rejseplanen_trains)
+def rejseplanen_source() -> Stream[BEvent]:
+    return Stream.source(RejseplanenSource())
 
 
 

@@ -8,20 +8,19 @@ T = TypeVar("T")
 class BaseSource(ABC, Generic[T]):
 
     @abstractmethod
-    def read(self):
+    def execute(self):
         pass
 
     def close(self):
-
         pass
 
     @final
-    def on_next(self, item: T): pass
+    def produce(self, item: T): pass
 
     @final
-    def on_error(self, e: Exception): pass
+    def error(self, e: Exception): pass
 
     @final
-    def on_completed(self): pass
+    def completed(self): pass
 
 

@@ -1,30 +1,28 @@
 from pybeamline.bevent import BEvent
-from typing import Optional, Union
-from reactivex import Observable, abc
-from reactivex.disposable import CompositeDisposable
+from typing import Union
 from pm4py.objects.log.obj import EventLog
 from pm4py.util import xes_constants as xes_util
 from pm4py import read_xes, convert_to_dataframe
 import pandas as pd
 
+from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.stream import Stream
 
-def xes_log_source_from_file(log: str) -> Observable[BEvent]:
-    return xes_log_source(read_xes(log))
+def xes_log_source_from_file(log: str) -> Stream[BEvent]:
+    return Stream.source(XesLogSource(read_xes(log)))
 
 
-def xes_log_source(
-        log: Union[EventLog, pd.DataFrame], scheduler: Optional[abc.SchedulerBase] = None
-) -> Observable[BEvent]:
-    if type(log) is not pd.DataFrame:
-        log = convert_to_dataframe(log)
-    if xes_util.DEFAULT_TIMESTAMP_KEY in log.columns:
-        log = log.sort_values(by=[xes_util.DEFAULT_TIMESTAMP_KEY])
+class XesLogSource(BaseSource[BEvent]):
 
-    def subscribe(
-            observer: abc.ObserverBase[BEvent], scheduler_: Optional[abc.SchedulerBase] = None
-    ) -> abc.DisposableBase:
+    def __init__(self, raw_log: Union[EventLog, pd.DataFrame]):
+        self.log = raw_log
+        if type(self.log) is not pd.DataFrame:
+            self.log = convert_to_dataframe(self.log)
+        if xes_util.DEFAULT_TIMESTAMP_KEY in self.log.columns:
+            self.log = self.log.sort_values(by=[xes_util.DEFAULT_TIMESTAMP_KEY])
 
-        for index, event in log.iterrows():
+    def execute(self):
+        for index, event in self.log.iterrows():
             time = None
             if xes_util.DEFAULT_TIMESTAMP_KEY in event:
                 time = event[xes_util.DEFAULT_TIMESTAMP_KEY]
@@ -33,15 +31,13 @@ def xes_log_source(
                 event["case:" + xes_util.DEFAULT_TRACEID_KEY],
                 "log-file",
                 time)
-            for col in log.columns:
-                if col not in [xes_util.DEFAULT_NAME_KEY, "case:" + xes_util.DEFAULT_NAME_KEY, xes_util.DEFAULT_TIMESTAMP_KEY]:
-                    if event[col] == event[col]: # verify for nan
+            for col in self.log.columns:
+                if col not in [xes_util.DEFAULT_NAME_KEY, "case:" + xes_util.DEFAULT_NAME_KEY,
+                               xes_util.DEFAULT_TIMESTAMP_KEY]:
+                    if event[col] == event[col]:  # verify for nan
                         if col.startswith("case:"):
                             e.trace_attributes[col[5:]] = event[col]
                         else:
                             e.event_attributes[col] = event[col]
-            observer.on_next(e)
-        observer.on_completed()
-        return CompositeDisposable()
-
-    return Observable(subscribe)
+            self.produce(e)
+        self.completed()

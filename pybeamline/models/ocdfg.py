@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, Set, Any
+from typing import Dict, Tuple, Set
 
 @dataclass
 class OCDFG:
