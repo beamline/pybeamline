@@ -8,6 +8,7 @@ from reactivex.disposable import Disposable
 from pybeamline.stream.base_operator import BaseOperator
 from pybeamline.stream.base_sink import BaseSink
 from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.connectable import Connectable
 
 T = TypeVar('T')
 R = TypeVar('R')
@@ -96,11 +97,6 @@ class Stream(Generic[T]):
 
         return subscription
 
-
-#    @staticmethod
-#    def from_xes_log_file(path: str) -> 'Stream[Any]':
-#        return Stream(xes_log_source_from_file(path))
-
     def map(self, func: Callable[[T], R]) -> 'Stream[R]':
         return Stream(self._observable.pipe(ops.map(func)))
 
@@ -161,6 +157,6 @@ class Stream(Generic[T]):
     def share(self) -> 'Stream[T]':
         return Stream(self._observable.pipe(ops.share()), value_type=self._value_type)
 
-    def publish(self) -> tuple['Stream[T]', object]:
+    def publish(self) -> tuple['Stream[T]', Connectable]:
         connectable = self._observable.pipe(ops.publish())
-        return Stream(connectable, value_type=self._value_type), connectable
+        return Stream(connectable, value_type=self._value_type), Connectable(connectable)
