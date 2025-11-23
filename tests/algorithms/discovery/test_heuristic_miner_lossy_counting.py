@@ -6,9 +6,9 @@ from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import (
     HeuristicsMinerLossyCounting,
     heuristics_miner_lossy_counting
 )
-from reactivex import from_iterable
-from reactivex.operators import to_list
 from pybeamline.sources import log_source
+from pybeamline.stream.stream import Stream
+
 
 class TestHeuristicsMinerLossyCounting(unittest.TestCase):
 
@@ -37,8 +37,7 @@ class TestHeuristicsMinerLossyCounting(unittest.TestCase):
         ]
 
         miner = heuristics_miner_lossy_counting(model_update_frequency=10)
-        result_stream = from_iterable(boevents).pipe(miner, to_list())
-        models = result_stream.run()
+        models = Stream.from_iterable(boevents).pipe(miner).to_list()
 
         self.assertGreaterEqual(len(models), 1)
         for model in models:
@@ -48,13 +47,13 @@ class TestHeuristicsMinerLossyCounting(unittest.TestCase):
     def test_invalid_event_type_raises(self):
         miner = heuristics_miner_lossy_counting()
         with self.assertRaises(TypeError):
-            list(from_iterable(["not-an-event"]).pipe(miner, to_list()).run())
+            list(Stream.from_iterable(["not-an-event"]).pipe(miner).to_list())
 
     def test_unflattened_bo_event_raises(self):
         unflat_event = BOEvent("e1", "A",{"Customer": {"c1", "c2"}},datetime.now())
         miner = heuristics_miner_lossy_counting()
         with self.assertRaises(ValueError):
-            list(from_iterable([unflat_event]).pipe(miner, to_list()).run())
+            list(Stream.from_iterable([unflat_event]).pipe(miner).to_list())
 
     def test_lossy_counting_bucket_cleaning_bevent(self):
         emitted = []

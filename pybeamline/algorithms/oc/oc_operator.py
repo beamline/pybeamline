@@ -1,17 +1,18 @@
 from typing import Dict, Optional, Protocol, Callable, Any, Union, List
-from reactivex import operators as ops, Observable
-from reactivex.subject import Subject
 from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting
 from pybeamline.algorithms.oc.strategies.base import InclusionStrategy, \
     RelativeFrequencyBasedStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
+from pybeamline.stream.base_map import BaseMap
+from pybeamline.stream.stream import Stream
+
 
 class StreamMiner(Protocol):
     """
     Protocol representing a callable that consumes a stream of BOEvents and emits process models.
     """
-    def __call__(self, stream: Observable[BOEvent]) -> Observable[Any]:
+    def __call__(self, stream: Stream[BOEvent]) -> Stream[Any]:
         ... # pragma: no cover
 
 def oc_operator(
@@ -20,7 +21,7 @@ def oc_operator(
     aer_model_update_frequency: Optional[int] = 30,
     aer_model_max_approx_error: Optional[float] = 0.01,
     default_miner: Optional[Callable[[], StreamMiner]] = None,
-) -> Callable[[Observable[BOEvent]], Observable[dict]]:
+) -> BaseMap[BOEvent, dict]:
     """
     Factory function to create a configured OCOperator.
     :param inclusion_strategy:
@@ -86,7 +87,7 @@ class OCOperator:
         """
         Register a stream for Activity-Entity Relationship (AER) diagrams using lossy counting.
         """
-        subject = Subject[BOEvent]()
+        subject = Stream.empty()
         self.__miner_subjects["AERStream"] = subject
         miner_op = activity_entity_relations_miner_lossy_counting(
             model_update_frequency=model_update_frequency,
@@ -170,7 +171,10 @@ class OCOperator:
         return self.__dynamic_mode
 
     @property
-    def operator(self) -> Callable[[Observable[BOEvent]], Observable[dict]]:
+    def operator(self) -> BaseMap[BOEvent, dict]:
+
+
+
         def pipeline(stream: Observable[BOEvent]) -> Observable[dict]:
             return stream.pipe(
                 ops.do_action(self._route_to_miner),

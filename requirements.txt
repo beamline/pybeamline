@@ -1,3 +1,7 @@
+pillow
+numpy
+ipython
+matplotlib
 typing-extensions
 pm4py~=2.7.16
 reactivex==4.0.4

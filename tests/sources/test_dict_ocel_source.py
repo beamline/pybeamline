@@ -1,7 +1,8 @@
 import unittest
+
+from pybeamline.algorithms.lambda_operator import LambdaOperator
 from pybeamline.boevent import BOEvent
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
-from reactivex import operators as ops
 
 class TestDictOcelSource(unittest.TestCase):
     def setUp(self):
@@ -33,7 +34,7 @@ class TestDictOcelSource(unittest.TestCase):
         # Capture the emitted events
         emitted_events = []
         shuffled_traces.pipe(
-            ops.map(lambda event: event),
+            LambdaOperator(lambda event: event)
         ).subscribe(
             on_next=lambda x: emitted_events.append(x),
         )

@@ -1,5 +1,4 @@
 import unittest
-from reactivex import operators as ops
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator

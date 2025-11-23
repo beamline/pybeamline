@@ -1,14 +1,17 @@
 import math
-from typing import Dict, Any, Tuple, Set, Callable, Optional, Union
-from reactivex import operators as ops, Observable, from_iterable
-from reactivex import just, empty
+from typing import Dict, Tuple, Set, Optional, List
+
 from pybeamline.boevent import BOEvent
 from pybeamline.models.aer import AER
+from pybeamline.stream.base_map import BaseMap
 from pybeamline.utils.cardinality import infer_cardinality, Cardinality
 
 
-def activity_entity_relations_miner_lossy_counting(model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None) -> Callable[
-    [Observable[BOEvent]], Observable[AER]]:
+def activity_entity_relations_miner_lossy_counting(model_update_frequency=10,
+                                                   max_approx_error: float = 0.01,
+                                                   control_flow: Optional[Set[str]] = None) -> BaseMap[BOEvent, AER]:
+
+
     """
     Entity Relationship Miner using a lossy counting approach.
     :param control_flow:
@@ -19,16 +22,28 @@ def activity_entity_relations_miner_lossy_counting(model_update_frequency=10, ma
      Maximum approximation error for the lossy counting on objects
     :return: Activity-Entity Relationship (AER)
     """
-    obj_rel = ActivityEntityRelationMinerLossyCounting(max_approx_error=max_approx_error, control_flow=control_flow)
 
-    def miner(event: Union[BOEvent,dict]) -> Observable[AER]:
-        obj_rel.ingest_event(event)
-        if obj_rel.observed_events() % model_update_frequency == 0:
-             return just(obj_rel.get_model())
+    return ActivityEntityRelationMinerLossyCountingMapper(model_update_frequency=model_update_frequency,
+                                                          max_approx_error=max_approx_error,
+                                                          control_flow=control_flow)
+
+
+class ActivityEntityRelationMinerLossyCountingMapper(BaseMap[BOEvent, AER]):
+
+    def __init__(self, model_update_frequency=10, max_approx_error: float = 0.01, control_flow: Optional[Set[str]] = None):
+        self.model_update_frequency = model_update_frequency
+        self.max_approx_error = max_approx_error
+        self.control_flow = control_flow
+        self.obj_rel = ActivityEntityRelationMinerLossyCounting(
+            max_approx_error=max_approx_error, control_flow=control_flow)
+
+    def transform(self, event: BOEvent) -> Optional[List[AER]]:
+        self.obj_rel.ingest_event(event)
+        if self.obj_rel.observed_events() % self.model_update_frequency == 0:
+            return [self.obj_rel.get_model()]
         else:
-            return empty()
+            return None
 
-    return ops.flat_map(miner)
 
 class ActivityEntityRelationMinerLossyCounting:
     def __init__(self, max_approx_error: float = 0.001, control_flow: Optional[Set[str]] = None):

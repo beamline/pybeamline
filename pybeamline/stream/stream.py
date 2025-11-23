@@ -3,6 +3,7 @@ import threading
 from reactivex import operators as ops, Observable, from_iterable, create, concat, empty, from_, merge
 from typing import Callable, Any, List, Optional, Generic, TypeVar, Iterable
 
+from reactivex.abc import DisposableBase
 from reactivex.disposable import Disposable
 
 from pybeamline.stream.base_operator import BaseOperator
@@ -35,7 +36,7 @@ class Stream(Generic[T]):
     @staticmethod
     def source(base_source: BaseSource[T]) -> 'Stream[T]':
 
-        def on_subscribe(observer, scheduler=None):
+        def on_subscribe(observer, _):
 
             completed_event = threading.Event()
 
@@ -61,7 +62,7 @@ class Stream(Generic[T]):
                 if hasattr(base_source, "close"):
                     try:
                         base_source.close()
-                    except Exception:
+                    except Exception("Closing failed"):
                         pass
 
             return Disposable(dispose)
@@ -69,7 +70,7 @@ class Stream(Generic[T]):
         return Stream(create(on_subscribe))
 
 
-    def sink(self, base_sink: BaseSink[T], blocking: bool = True) -> Disposable:
+    def sink(self, base_sink: BaseSink[T], blocking: bool = True) -> DisposableBase:
         completed_event = threading.Event()
 
         def on_next(item):

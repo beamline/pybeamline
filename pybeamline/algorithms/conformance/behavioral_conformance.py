@@ -1,27 +1,32 @@
 import sys
 from collections import defaultdict
-from typing import Callable
-from reactivex import empty, just, Observable
-from reactivex import operators as ops
+from typing import Optional, List
+
 from pybeamline.bevent import BEvent
-from pybeamline.sources import xes_log_source_from_file
+from pybeamline.stream.base_map import BaseMap, T, R
 
 
-def behavioral_conformance(model) -> Callable[[Observable[BEvent]], Observable[tuple]]:
-    bc = BehavioralConformance(M=model)
-    observed_events = 0
+class BehavioralConformanceChecker(BaseMap[BEvent, tuple]):
 
-    def conformance_checker(event: BEvent) -> Observable[tuple]:
-        nonlocal observed_events
-        observed_events += 1
-        bc.ingest_event(event)
+    def __init__(self, model):
+        self.model = model
+        self.observed_events = 0
+        self.bc = BehavioralConformance(M=model)
+
+    def transform(self, event: BEvent) -> Optional[List[tuple]]:
+        self.observed_events += 1
+        self.bc.ingest_event(event)
         case_id = event.get_trace_name()
-        if case_id in bc.get_conformance():
-            return just((bc.get_conformance(case_id), bc.get_confidence(case_id), bc.get_completeness(case_id),observed_events))
-        else:
-            return empty()
+        if case_id in self.bc.get_conformance():
+            return [(self.bc.get_conformance(case_id),
+                     self.bc.get_confidence(case_id),
+                     self.bc.get_completeness(case_id),
+                     self.observed_events)]
+        return None
 
-    return ops.flat_map(conformance_checker)
+
+def behavioral_conformance(model) -> BehavioralConformanceChecker:
+    return BehavioralConformanceChecker(model)
 
 
 def mine_behavioral_model_from_stream(source) -> tuple:

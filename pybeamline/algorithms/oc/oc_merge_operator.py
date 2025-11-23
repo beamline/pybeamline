@@ -1,11 +1,12 @@
-from typing import Callable, Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import operators as ops, Observable
+
+from pybeamline.stream.base_map import BaseMap
 from pybeamline.utils.commands import Command
 from pybeamline.models.aer import AER
 from pybeamline.models.ocdfg import OCDFG
 
-def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDFG,AER]]]]:
+def oc_merge_operator() -> BaseMap[Dict[str, Any], Dict[str, Union[OCDFG,AER]]]:
     """
     Factory function to create a reactive operator that merges multiple per-object-type
     Directly-Follows Graphs (DFGs) and a global Activity-Entity Relationship (AER) model
@@ -26,14 +27,17 @@ def oc_merge_operator() -> Callable[[Observable], Observable[Dict[str,Union[OCDF
         A callable operator that transforms a stream of mixed mining outputs into a stream
         of synchronised models: a dictionary with keys "ocdfg" (OCDFG) and "aer" (AER).
     """
-    manager = OCMergeOperator()
-    def operator(stream):
-        # Map each incoming message through the manager.process method
-        return stream.pipe(
-            ops.map(manager.process),
-            ops.filter(lambda e: e is not None),
-        )
-    return operator
+    return OCMergeOperatorMapper()
+
+
+class OCMergeOperatorMapper(BaseMap[Dict[str, Any], Dict[str,Union[OCDFG,AER]]]):
+
+    def __init__(self):
+        self.oc_operator = OCMergeOperator()
+
+    def transform(self, value: Dict[str, Any]) -> Optional[List[Dict[str,Union[OCDFG,AER]]]]:
+        return [self.oc_operator.process(value)]
+
 
 class OCMergeOperator:
     """

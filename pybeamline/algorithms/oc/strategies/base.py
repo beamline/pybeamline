@@ -1,7 +1,6 @@
 import math
 from asyncio import Protocol
 from typing import Any, Dict, Set, Tuple
-from reactivex import Observable, from_iterable, just
 from pybeamline.utils.commands import Command, create_command
 
 class InclusionStrategy(Protocol):

@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Iterable
 from typing_extensions import override
 from pybeamline.bevent import BEvent
 from pybeamline.stream.base_filter import BaseFilter
 
 
-class AbstractEventFilter(BaseFilter[BEvent]):
+class AbstractEventFilter(BaseFilter[BEvent], ABC):
 
     def __init__(self, attribute_name: str, attribute_values: Iterable):
         self.attribute_name = attribute_name
@@ -66,7 +66,6 @@ class ExcludesOnTraceAttributeEqualFilter(AbstractEventFilter):
     def condition(self, value: BEvent) -> bool:
         return (self.attribute_name not in value.trace_attributes.keys()
                 or value.trace_attributes[self.attribute_name] not in self.attribute_values)
-
 
 
 def retains_on_trace_attribute_equal_filter(attribute_name: str, attribute_values: Iterable) -> BaseFilter[BEvent]:
