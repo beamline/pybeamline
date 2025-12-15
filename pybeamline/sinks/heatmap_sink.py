@@ -39,3 +39,4 @@ class heatmap_sink:
             imageio.mimsave(self.gif_path, self.frames, fps=self.fps, loop=0)
 
         plt.show()
+        return plt
