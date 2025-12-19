@@ -1,11 +1,16 @@
 from typing import Dict, Optional, Protocol, Callable, Any, Union, List
+
+from reactivex.subject import Subject
+
 from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting
 from pybeamline.algorithms.oc.strategies.base import InclusionStrategy, \
     RelativeFrequencyBasedStrategy
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.stream.base_map import BaseMap
+from pybeamline.stream.base_operator import BaseOperator
 from pybeamline.stream.stream import Stream
+from reactivex import operators as ops
 
 
 class StreamMiner(Protocol):
@@ -17,10 +22,10 @@ class StreamMiner(Protocol):
 
 def oc_operator(
     inclusion_strategy: Optional[InclusionStrategy] = None,
-    control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
+    control_flow: Optional[Dict[str, Callable[[], BaseOperator[Stream[Any], Stream[Any]]]]] = None,
     aer_model_update_frequency: Optional[int] = 30,
     aer_model_max_approx_error: Optional[float] = 0.01,
-    default_miner: Optional[Callable[[], StreamMiner]] = None,
+    default_miner: Optional[Callable[[], BaseOperator[Stream[Any], Stream[Any]]]] = None,
 ) -> BaseMap[BOEvent, dict]:
     """
     Factory function to create a configured OCOperator.
@@ -57,73 +62,84 @@ def oc_operator(
         aer_model_update_frequency=aer_model_update_frequency,
         aer_model_max_approx_error=aer_model_max_approx_error,
         default_miner=default_miner
-    ).operator
+    )
 
 
-class OCOperator:
+class OCOperator(BaseMap[BOEvent, dict]):
     """
     Reactive operator for object-centric process mining, managing multiple per-object-type stream miners and an AER (Activity-Entity Relationship) miner.
     It consumes a stream of BOEvents, dynamically routes and transforms them based on object types, and emits discovered control-flow models
     (DFGs) and AER diagrams at configurable intervals. Supports both static (predefined miners) and dynamic (on-the-fly) miner registration modes,
     and integrates an inclusion strategy to control which object-types to be considered downstream.
     """
-    def __init__(self, control_flow: Optional[Dict[str, Callable[[], StreamMiner]]] = None,
+    def __init__(self, control_flow: Optional[Dict[str, Callable[[], BaseOperator[Stream[Any], Stream[Any]]]]] = None,
                  inclusion_strategy: InclusionStrategy = None,
                  aer_model_update_frequency: Optional[int] = 30,
                  aer_model_max_approx_error: Optional[float] = 0.01,
-                 default_miner: Optional[Callable[[], StreamMiner]] = None):
+                 default_miner: Optional[Callable[[], BaseOperator[Stream[Any], Stream[Any]]]] = None):
         self.__inclusion_strategy = inclusion_strategy or RelativeFrequencyBasedStrategy()
         self.__dynamic_mode = not bool(control_flow)
         self.__control_flow = control_flow or {}
         self.__default_miner = default_miner or (lambda: heuristics_miner_lossy_counting(20))
         self.__miner_subjects: Dict[str, Subject[Union[BOEvent, dict]]] = {}
         self.__output_subject: Subject = Subject()
+        self.__output_buffer: List[dict] = []
 
         for obj_type, miner in self.__control_flow.items():
             self._register_stream(obj_type, miner())
         self._register_aer_stream(aer_model_update_frequency, aer_model_max_approx_error)
+        self.__aer_update_frequency = aer_model_update_frequency
 
     def _register_aer_stream(self, model_update_frequency, max_approx_error: float):
         """
         Register a stream for Activity-Entity Relationship (AER) diagrams using lossy counting.
         """
-        subject = Stream.empty()
-        self.__miner_subjects["AERStream"] = subject
+        # Subject for AER miner input
+        aer_subject: Subject = Subject()
+        self.__miner_subjects["AERStream"] = aer_subject
         miner_op = activity_entity_relations_miner_lossy_counting(
             model_update_frequency=model_update_frequency,
             control_flow=self.__control_flow,
             max_approx_error=max_approx_error
         )
-        aer_stream = subject.pipe(
-            miner_op,
-            ops.map(lambda model: {
-                "type": "aer",
-                "model": model
-            }),
-        )
+        # Keep reference to AER mapper to allow synchronous emission checks
+        self.__aer_mapper = miner_op
+        # Wrap Rx Subject as Stream and run miner, then map to dicts
+        aer_stream = Stream(aer_subject).pipe(miner_op).map(lambda model: {
+            "type": "aer",
+            "model": model
+        })
         aer_stream.subscribe(
-            on_next=lambda msg: self.__output_subject.on_next(msg),
+            on_next=lambda msg: (self.__output_subject.on_next(msg), self.__output_buffer.append(msg)),
             on_error=lambda e: print(f"[AER-STREAM] error:", e),
             on_completed=lambda: None
         )
 
-    def _register_stream(self, obj_type: str, miner: Optional[StreamMiner] = None):
+        # Collect output subject emissions into buffer with inclusion strategy
+        Stream(self.__output_subject).flat_map(
+            lambda item: self.__inclusion_strategy.evaluate(item).to_observable()
+        ).subscribe(
+            on_next=lambda item: self.__output_buffer.append(item),
+            on_error=lambda e: print(f"[OUTPUT] error:", e),
+            on_completed=lambda: None
+        )
+
+    def _register_stream(self, obj_type: str, miner: Optional[BaseOperator[Stream[Any], Stream[Any]]] = None):
         """
         Register a new miner subject for the given object type.
         If a miner is provided, it will be used; otherwise, a default miner is created.
         """
-        subject = Subject[BOEvent]()
-        self.__miner_subjects[obj_type] = subject
-        miner_op = miner or self.__default_miner
+        # Subject per object type for DFG miner input
+        obj_subject: Subject = Subject()
+        self.__miner_subjects[obj_type] = obj_subject
+        miner_op = miner or self.__default_miner()
 
-        dfg_stream = subject.pipe(
-            miner_op,
-            ops.map(lambda model: {
-                "type": "dfg",
-                "object_type": obj_type,
-                "model": model
-            }),
-        )
+        # Wrap Rx Subject as Stream and run miner, then map to dicts
+        dfg_stream = Stream(obj_subject).pipe(miner_op).map(lambda model: {
+            "type": "dfg",
+            "object_type": obj_type,
+            "model": model
+        })
 
         dfg_stream.subscribe(
             on_next=lambda msg: self.__output_subject.on_next(msg),
@@ -170,16 +186,36 @@ class OCOperator:
         """
         return self.__dynamic_mode
 
+    def transform(self, event: BOEvent) -> Optional[List[dict]]:
+        # Route incoming event to miners/AER
+        self._route_to_miner(event)
+
+        # Synchronously emit AER model at exact update intervals to avoid races
+        try:
+            aer_events = self.__aer_mapper.obj_rel.observed_events()
+            if self.__aer_update_frequency and aer_events % self.__aer_update_frequency == 0:
+                model = self.__aer_mapper.obj_rel.get_model()
+                self.__output_buffer.append({"type": "aer", "model": model})
+        except Exception:
+            pass
+
+        # Drain buffered outputs produced up to now
+        if self.__output_buffer:
+            results = list(self.__output_buffer)
+            self.__output_buffer.clear()
+            return results
+        return None
+
     @property
-    def operator(self) -> BaseMap[BOEvent, dict]:
+    def operator(self) -> BaseOperator[Stream[BOEvent], Stream[dict]]:
+        # Adapter to preserve tests expecting `.operator` producing a Stream operator
+        class MapAdapter(BaseOperator[Stream[BOEvent], Stream[dict]]):
+            def __init__(self, mapper: BaseMap[BOEvent, dict]):
+                self._mapper = mapper
+
+            def apply(self, stream: Stream[BOEvent]) -> Stream[dict]:
+                return self._mapper.apply(stream)
+
+        return MapAdapter(self)
 
 
-
-        def pipeline(stream: Observable[BOEvent]) -> Observable[dict]:
-            return stream.pipe(
-                ops.do_action(self._route_to_miner),
-                ops.filter(lambda e: not isinstance(e, BOEvent)),
-                ops.merge(self.__output_subject),
-                ops.flat_map(self.__inclusion_strategy.evaluate),
-            )
-        return pipeline

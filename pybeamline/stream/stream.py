@@ -127,12 +127,14 @@ class Stream(Generic[T]):
         self,
         on_next: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
-        on_completed: Optional[Callable[[], None]] = None
+        on_completed: Optional[Callable[[], None]] = None,
+        scheduler=None
     ):
         return self._observable.subscribe(
             on_next=on_next,
             on_error=on_error,
             on_completed=on_completed,
+            scheduler=scheduler
         )
 
     def to_observable(self) -> Observable[T]:

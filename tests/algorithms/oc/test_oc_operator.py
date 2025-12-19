@@ -1,11 +1,12 @@
+import threading
 import unittest
-import warnings
 
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting_budget import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.oc.strategies.base import LossyCountingStrategy, RelativeFrequencyBasedStrategy, \
     SlidingWindowStrategy
+from pybeamline.stream.rx_operator import RxOperator
 from pybeamline.utils.commands import Command
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
 from pybeamline.models.aer import AER
@@ -49,6 +50,8 @@ class TestOCOperator(unittest.TestCase):
             inclusion_strategy=RelativeFrequencyBasedStrategy(frequency_threshold=0.01)
         )
 
+        self.done = threading.Event()
+
     def test_oc_operator_mode(self):
        # Check if the operator is initialized correctly with control flow
         self.assertIsInstance(self.oc_operator_with_control_flow_heuristic, OCOperator)
@@ -66,10 +69,12 @@ class TestOCOperator(unittest.TestCase):
         emitted_models = []
         ocel_source.pipe(
             self.oc_operator_with_control_flow_heuristic.operator,
-            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
+            RxOperator(ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet)))
         ).subscribe(
             on_next=lambda x: emitted_models.append(x),
+            on_completed=lambda: self.done.set()
         )
+        self.done.wait()
         # Check if the number of emitted models matches the expected count
         self.assertEqual(11, len(emitted_models),)
 
@@ -78,15 +83,18 @@ class TestOCOperator(unittest.TestCase):
             self.assertIsInstance(dictModel["model"], HeuristicsNet)
 
     def test_oc_operator_without_cf_yields_dfg(self):
+
         # Generate OCEL source from the events
         ocel_source = dict_test_ocel_source([(self.events,50)], shuffle=True) # Default lossy counting parameters Model_update_frequency=10
         emitted_models = []
         ocel_source.pipe(
             self.operator_without_cf.operator,
-            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
+            RxOperator(ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet)))
         ).subscribe(
             on_next=lambda x: emitted_models.append(x),
+            on_completed=lambda: self.done.set()
         )
+        self.done.wait()
         # Check if the number of emitted models matches the expected count
         self.assertEqual( 29,len(emitted_models))
         # Check if the control flow is empty aka. Dynamic mode is enabled
@@ -101,16 +109,18 @@ class TestOCOperator(unittest.TestCase):
         emitted_models = []
         ocel_source.pipe(
             self.oc_operator_with_control_flow_heuristic_budget.operator,
-            ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet))
+            RxOperator(ops.filter(lambda output: output["type"] == "dfg" and isinstance(output["model"], HeuristicsNet)))
         ).subscribe(
-            on_next=lambda x: emitted_models.append(x),
+            on_next=emitted_models.append,
+            on_error=lambda e: (_ for _ in ()).throw(e),
+            on_completed=lambda: self.done.set(),
         )
-        # Check if the number of emitted models matches the expected count
+        self.done.wait()
         self.assertEqual(55, len(emitted_models))
 
         for dictModel in emitted_models:
             # Check if the generated model is a HeuristicsNet
-            self.assertIsInstance(dictModel["model"],HeuristicsNet)
+            self.assertIsInstance(dictModel["model"], HeuristicsNet)
 
     def test_control_flow_input_errors(self):
         # Generate OCEL source from the events
@@ -153,8 +163,9 @@ class TestOCOperator(unittest.TestCase):
             oc_operator(inclusion_strategy=RelativeFrequencyBasedStrategy(frequency_threshold=0.15)), # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
+            on_completed=lambda: self.done.set()
         )
-
+        self.done.wait()
         emitted_commands = []
         for msg in emitted_models_and_msg:
             if msg["type"] == "model":
@@ -185,10 +196,12 @@ class TestOCOperator(unittest.TestCase):
         emitted_aer_models = []
         ocel_source.pipe(
             oc_operator(aer_model_max_approx_error=0.5, aer_model_update_frequency=30),  # High max_approx_error to trigger forgetting
-            ops.filter(lambda output: output["type"] == "aer" and isinstance(output["model"], AER)),
+            RxOperator(ops.filter(lambda output: output["type"] == "aer" and isinstance(output["model"], AER))),
         ).subscribe(
             on_next=lambda x: emitted_aer_models.append(x),
+            on_completed=lambda: self.done.set()
         )
+        self.done.wait()
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Add Item")[("Item","Order")])
         self.assertEqual(Cardinality.MANY_TO_MANY, emitted_aer_models[-1]["model"].get_relations("Add Item")[("Item","Order")])
         self.assertEqual(Cardinality.ONE_TO_ONE, emitted_aer_models[0]["model"].get_relations("Create Order")[("Customer","Order")])
@@ -214,8 +227,9 @@ class TestOCOperator(unittest.TestCase):
             # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
+            on_completed=lambda: self.done.set()
         )
-
+        self.done.wait()
         emitted_commands = []
         for msg in emitted_models_and_msg:
             if msg["type"] == "model":
@@ -250,8 +264,9 @@ class TestOCOperator(unittest.TestCase):
             # Because of the high object_emit_threshold, DEREGISTRATION cmd should be emitted
         ).subscribe(
             on_next=lambda x: emitted_models_and_msg.append(x),
+            on_completed=lambda: self.done.set()
         )
-
+        self.done.wait()
         emitted_commands = []
         for msg in emitted_models_and_msg:
             if msg["type"] == "model":
