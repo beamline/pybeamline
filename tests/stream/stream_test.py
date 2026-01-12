@@ -293,7 +293,7 @@ class TestStream(unittest.TestCase):
 
         class AsyncSource(BaseSource[int]):
 
-            def __init__(self, items: list[int], delay=0.01):
+            def __init__(self, items: list[int], delay=0.02):
                 self.items = items
                 self.delay = delay
 
@@ -321,6 +321,7 @@ class TestStream(unittest.TestCase):
         stream1 = Stream.source(AsyncSource([1, 1, 1, 1]))
         stream2 = Stream.source(AsyncSource([2, 2, 2, 2]))
         stream1.merge(stream2).sink(sink)
+        print(sink.items)
         self.assertTrue(sink.items == [1, 2, 1, 2, 1, 2, 1, 2] or sink.items == [2, 1, 2, 1, 2, 1, 2, 1])
 
 
