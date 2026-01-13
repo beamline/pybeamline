@@ -74,10 +74,8 @@ class heatmap_sink(BaseSink[Counts]):
         else:
             plt.show()
             plt.close(fig)
-        print(".",end="")
 
     def close(self) -> None:
-        print("done")
         if self._closed:
             return
         self._closed = True
