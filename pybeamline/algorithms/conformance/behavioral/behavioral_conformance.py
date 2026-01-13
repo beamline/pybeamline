@@ -63,8 +63,8 @@ class BehavioralConformance:
         self.__conformance = dict()  # saves a traces' conformance
         self.__completeness = dict()  # saves a traces' completeness
         self.__confidence = dict()  # saves a traces' confidence
-        self.__obs = defaultdict(list)  # saves all distinct relations in a trace that has ocurred
-        self.__inc = dict()  # saves amount of incorrect relations acording to the reference model of a trace
+        self.__obs = defaultdict(list)  # saves all distinct relations in a trace that has occurred
+        self.__inc = dict()  # saves amount of incorrect relations according to the reference model of a trace
 
     def ingest_event(self, event):
         case_id = event.get_trace_name()  # easier reference to caseID

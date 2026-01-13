@@ -28,7 +28,7 @@ class TestOcelJsonLogSource(unittest.TestCase):
                 self.elements.append(item)
 
         # Path to the test file
-        test_file_path = "tests/logistics.jsonocel"
+        test_file_path = "./tests/logistics.jsonocel"
         # Generate OCEL from the test file
         ocel_source = ocel2_log_source_from_file(test_file_path)
         # Check if the generated OCEL is not None
