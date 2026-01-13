@@ -17,7 +17,7 @@ class TemporalProfileDiscoveryMapper(BaseMap[List[BEvent], TemporalProfile]):
         self.events = []
 
     def transform(self, value: List[BEvent]) -> Optional[List[TemporalProfile]]:
-        self.events.append(value)
+        self.events.extend(value)
         tp_discovery = TemporalProfileDiscovery(self.events)
         return [tp_discovery.apply()]
 
