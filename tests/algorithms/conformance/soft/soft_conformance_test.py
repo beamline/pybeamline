@@ -12,8 +12,6 @@ from pybeamline.stream.base_sink import BaseSink
 
 class TestSoftConformance(unittest.TestCase):
 
-
-
     def setUp(self):
         base_time = datetime(2025, 1, 1, 9, 0, 0)
         self.events = [
@@ -29,7 +27,6 @@ class TestSoftConformance(unittest.TestCase):
             BEvent("K", "case-1", event_time=base_time + timedelta(seconds=55)),
             BEvent("E", "case-1", event_time=base_time + timedelta(seconds=60))
         ]
-
 
     def construct_reference_model(self) -> Pdfa:
         pdfa = Pdfa()
