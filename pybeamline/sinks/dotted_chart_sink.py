@@ -1,169 +1,202 @@
+from typing import Optional
 from pybeamline.bevent import BEvent
 import numpy as np
 import matplotlib.pyplot as plt
-from IPython.display import clear_output
 from datetime import timedelta
 from matplotlib.cm import get_cmap
 import imageio.v2 as imageio
 from io import BytesIO
 from PIL import Image
 
-class dotted_chart_sink:
+from pybeamline.stream.base_sink import BaseSink
 
-    def __init__(
-        self,
-        title="Dotted chart of events",
-        max_events=None,
-        time_window_seconds=None,
-        point_size=100,
-        cmap_name="tab20",
-        show_legend=False,
-        gif_path=None,
-        fps=5
-    ):
-        self.title = title
-        self.max_events = max_events
-        self.time_window_seconds = time_window_seconds
-        self.point_size = point_size
-        self.show_legend = show_legend
-        self.events = []
-        self.cmap = get_cmap(cmap_name)
-        self.act_to_color = {}
-        self._next_color_idx = 0
-        self.gif_path = gif_path
-        self.fps = fps
-        self.frames = []
-        self.max_w = 0
-        self.max_h = 0
+try:
+	from IPython.display import clear_output as _clear_output
+except Exception:
+	_clear_output = None
 
 
-    def __call__(self, event: BEvent):
-        self.events.append(event)
-        
-        act = event.get_event_name()
-        if act not in self.act_to_color:
-            n_colors = self.cmap.N  # for tab20, this is 20
-            # spread indices over the available colors; reuse after n_colors
-            norm_idx = (self._next_color_idx % n_colors) / max(1, n_colors - 1)
-            self.act_to_color[act] = self.cmap(norm_idx)
-            self._next_color_idx += 1
-        
-        if self.time_window_seconds is not None:
-            cutoff = event.get_event_time() - timedelta(seconds=self.time_window_seconds)
-            self.events = [e for e in self.events if e.get_event_time() >= cutoff]
+class dotted_chart_sink(BaseSink[BEvent]):
+	def __init__(
+			self,
+			title: str = "Dotted chart of events",
+			max_events: Optional[int] = None,
+			time_window_seconds: Optional[float] = None,
+			point_size: float = 100,
+			cmap_name: str = "tab20",
+			show_legend: bool = False,
+			gif_path: Optional[str] = None,
+			fps: int = 5,
+			write_every: Optional[int] = None,  # e.g. 20; None = only on close
+			figsize=(10, 4),
+			dpi: int = 120,
+			bg_color=(255, 255, 255),
+			center: bool = True,
+			display_in_notebook: bool = True,
+	):
+		self.title = title
+		self.max_events = max_events
+		self.time_window_seconds = time_window_seconds
+		self.point_size = point_size
+		self.show_legend = show_legend
 
-        if self.max_events is not None and len(self.events) > self.max_events:
-            self.events = self.events[-self.max_events:]
-        
-        self._draw()
+		self.cmap = get_cmap(cmap_name)
+		self.act_to_color = {}
+		self._next_color_idx = 0
 
+		self.gif_path = gif_path
+		self.fps = fps
+		self.write_every = write_every
 
-    def _draw(self):
-        if not self.events:
-            return
+		self.figsize = figsize
+		self.dpi = dpi
+		self.bg_color = bg_color
+		self.center = center
+		self.display_in_notebook = display_in_notebook
 
-        clear_output(wait=True)
+		self.events = []  # rolling window / max buffer of BEvent
+		self.frames = []  # PIL images
+		self.max_w = 0
+		self.max_h = 0
 
-        # Convert to numpy arrays
-        events = self.events
+		self._count = 0
+		self._closed = False
 
-        # Extract case ids, timestamps, and activities
-        case_ids = np.array([e.get_trace_name() for e in events])
-        times = np.array([e.get_event_time() for e in events])
-        activities = np.array([e.get_event_name() for e in events])
+	def consume(self, event: BEvent) -> None:
+		if self._closed:
+			raise RuntimeError("DottedChartSink.consume() called after close().")
 
-        # Use first timestamp as zero
-        t0 = times[0]
-        x = np.array([(t - t0).total_seconds() for t in times], dtype=float)
+		self.events.append(event)
 
-        # Unique case IDs for Y-axis, but keep original order
-        unique_cases = list(dict.fromkeys(case_ids))
-        y_positions = {cid: i for i, cid in enumerate(unique_cases)}
-        y = np.array([y_positions[cid] for cid in case_ids], dtype=float)
+		# stable activity -> color mapping
+		act = event.get_event_name()
+		if act not in self.act_to_color:
+			n_colors = self.cmap.N
+			norm_idx = (self._next_color_idx % n_colors) / max(1, n_colors - 1)
+			self.act_to_color[act] = self.cmap(norm_idx)
+			self._next_color_idx += 1
 
-        # colors from persistent mapping
-        colors = np.array([self.act_to_color[a] for a in activities])
+		# apply time window
+		if self.time_window_seconds is not None:
+			cutoff = event.get_event_time() - timedelta(seconds=self.time_window_seconds)
+			self.events = [e for e in self.events if e.get_event_time() >= cutoff]
 
-        # Plot
-        plt.figure(figsize=(10, max(3, len(unique_cases) * 0.4)))
-        
-        for cid in unique_cases:
-            idx = np.where(case_ids == cid)[0]
-            xs = x[idx]
-            y_val = y_positions[cid]
-            
-            # Sort by x (timestamps)
-            xs_sorted = np.sort(xs)
-            # Horizontal line across all events of this case
-            plt.plot(xs_sorted, [y_val] * len(xs_sorted), color="black", linewidth=1, zorder=1)
+		# apply max events
+		if self.max_events is not None and len(self.events) > self.max_events:
+			self.events = self.events[-self.max_events:]
 
+		# render either to notebook or to frame buffer (or both)
+		self._draw_and_maybe_capture()
 
-        plt.scatter(x, y, s=self.point_size, c=colors, edgecolors="black")
+		self._count += 1
+		if self.gif_path and self.write_every and self._count % self.write_every == 0:
+			self._flush()
 
-        # Label y-axis with actual case ids
-        plt.yticks(list(y_positions.values()), list(y_positions.keys()))
+	def close(self) -> None:
+		if self._closed:
+			return
+		self._closed = True
+		self._flush()
 
-        plt.xlabel("Time since first event (seconds)")
-        plt.ylabel("Case ID")
-        plt.title(self.title)
-        plt.grid(True, linestyle=":", linewidth=0.5)
+	def _draw_and_maybe_capture(self) -> None:
+		if not self.events:
+			return
 
-        # Build legend
-        if self.show_legend:
-            visible_acts = sorted(set(activities))  # alphabetically in legend
-            handles = [
-                plt.Line2D(
-                    [0], [0],
-                    marker="o",
-                    color="w",
-                    label=act,
-                    markerfacecolor=self.act_to_color[act],
-                    markersize=8,
-                )
-                for act in visible_acts
-            ]
-            plt.legend(
-                handles=handles,
-                title="Activities",
-                loc="upper center",
-                bbox_to_anchor=(0.5, -0.3),
-                ncol=5,
-                frameon=False,
-            )
+		if self.display_in_notebook and _clear_output is not None:
+			_clear_output(wait=True)
 
-        plt.tight_layout()
+		events = self.events
 
-        if self.gif_path:
-            buf = BytesIO()
-            plt.savefig(buf, format="png", bbox_inches="tight")
-            buf.seek(0)
+		case_ids = np.array([e.get_trace_name() for e in events])
+		times = np.array([e.get_event_time() for e in events])
+		activities = np.array([e.get_event_name() for e in events])
 
-            # Open as PIL image, convert to RGB (no alpha)
-            img = Image.open(buf).convert("RGB")
-            w, h = img.size
+		t0 = times[0]
+		x = np.array([(t - t0).total_seconds() for t in times], dtype=float)
 
-            # Update global max size
-            if w > self.max_w:
-                self.max_w = w
-            if h > self.max_h:
-                self.max_h = h
+		unique_cases = list(dict.fromkeys(case_ids))
+		y_positions = {cid: i for i, cid in enumerate(unique_cases)}
+		y = np.array([y_positions[cid] for cid in case_ids], dtype=float)
 
-            # Store original-size image
-            self.frames.append(img)
+		colors = np.array([self.act_to_color[a] for a in activities])
 
-            # Build padded frames with size (max_w, max_h)
-            padded_frames = []
-            for im in self.frames:
-                iw, ih = im.size
-                # white background canvas (or any color you prefer)
-                canvas = Image.new("RGB", (self.max_w, self.max_h), (255, 255, 255))
+		# build figure (fixed dpi; height depends on cases unless you choose to fix it too)
+		height = max(self.figsize[1], max(3.0, len(unique_cases) * 0.4))
+		fig, ax = plt.subplots(figsize=(self.figsize[0], height), dpi=self.dpi)
 
-                # center image on canvas
-                offset = ((self.max_w - iw) // 2, (self.max_h - ih) // 2)
-                canvas.paste(im, offset)
+		# horizontal lines per case
+		for cid in unique_cases:
+			idx = np.where(case_ids == cid)[0]
+			xs_sorted = np.sort(x[idx])
+			y_val = y_positions[cid]
+			ax.plot(xs_sorted, [y_val] * len(xs_sorted), color="black", linewidth=1, zorder=1)
 
-                padded_frames.append(np.array(canvas, dtype=np.uint8))
+		ax.scatter(x, y, s=self.point_size, c=colors, edgecolors="black")
 
-            imageio.mimsave(self.gif_path, padded_frames, fps=self.fps, loop=0)
+		ax.set_yticks(list(y_positions.values()))
+		ax.set_yticklabels(list(y_positions.keys()))
+		ax.set_xlabel("Time since first event (seconds)")
+		ax.set_ylabel("Case ID")
+		ax.set_title(self.title)
+		ax.grid(True, linestyle=":", linewidth=0.5)
 
-        plt.show()
+		if self.show_legend:
+			visible_acts = sorted(set(activities))
+			handles = [
+				plt.Line2D(
+					[0], [0],
+					marker="o",
+					color="w",
+					label=act,
+					markerfacecolor=self.act_to_color[act],
+					markersize=8,
+				)
+				for act in visible_acts
+			]
+			ax.legend(
+				handles=handles,
+				title="Activities",
+				loc="upper center",
+				bbox_to_anchor=(0.5, -0.3),
+				ncol=5,
+				frameon=False,
+			)
+
+		fig.tight_layout()
+
+		if self.gif_path:
+			# Capture a frame (NO bbox_inches="tight" to avoid size jitter)
+			buf = BytesIO()
+			fig.savefig(buf, format="png")
+			buf.seek(0)
+
+			img = Image.open(buf).convert("RGB")
+			w, h = img.size
+			self.max_w = max(self.max_w, w)
+			self.max_h = max(self.max_h, h)
+			self.frames.append(img)
+
+		# show in notebook if desired
+		if self.display_in_notebook and self.gif_path is None:
+			plt.show()
+
+		plt.close(fig)
+
+	def _flush(self) -> None:
+		if not self.gif_path or not self.frames:
+			return
+
+		padded_frames = []
+		for im in self.frames:
+			iw, ih = im.size
+			canvas = Image.new("RGB", (self.max_w, self.max_h), self.bg_color)
+
+			if self.center:
+				offset = ((self.max_w - iw) // 2, (self.max_h - ih) // 2)
+			else:
+				offset = (0, 0)
+
+			canvas.paste(im, offset)
+			padded_frames.append(np.asarray(canvas, dtype=np.uint8))
+
+		imageio.mimsave(self.gif_path, padded_frames, fps=self.fps, loop=0)
