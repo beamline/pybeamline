@@ -1,4 +1,5 @@
-from IPython.display import display, clear_output
+from typing import Optional
+from IPython.display import display
 from graphviz import Source
 
 import imageio.v2 as imageio
@@ -6,59 +7,82 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 
+from pybeamline.stream.base_sink import BaseSink
 
-class graphviz_sink:
+try:
+	from IPython.display import clear_output as _clear_output
+except Exception:
+	_clear_output = None
 
-	def __init__(self, gif_path=None, fps=5, mode="RGB", bg_color=(255, 255, 255), center=True):
+
+class graphviz_sink(BaseSink[str]):
+	def __init__(
+			self,
+			gif_path: Optional[str] = None,
+			fps: int = 5,
+			mode: str = "RGB",
+			bg_color=(255, 255, 255),
+			center: bool = True,
+			write_every: Optional[int] = None,  # e.g. 20; None = only on close
+	):
 		self.gif_path = gif_path
 		self.fps = fps
 		self.mode = mode
 		self.bg_color = bg_color
 		self.center = center
+		self.write_every = write_every
 
-		self.frames = []
+		self.frames = []  # store PIL Images
 		self.max_w = 0
 		self.max_h = 0
+		self._count = 0
+		self._closed = False
 
+	def consume(self, dot_string: str) -> None:
+		if self._closed:
+			raise RuntimeError("GraphvizSink.consume() called after close().")
 
-	def __call__(self, dot_string):
-		clear_output(wait=True)
-
-		# Display in notebook
-		src = Source(dot_string)
-		display(src)
+		if not self.gif_path:
+			if _clear_output is not None:
+				_clear_output(wait=True)
+			display(Source(dot_string))
 
 		if self.gif_path is None:
 			return
 
-		# Render Graphviz DOT to PNG bytes
+		# Render DOT -> PNG bytes
+		src = Source(dot_string)
 		png_data = src.pipe(format="png")
 
-		# Open with PIL and normalize mode
+		# PIL image, normalized mode
 		img = Image.open(BytesIO(png_data)).convert(self.mode)
 
 		w, h = img.size
+		self.max_w = max(self.max_w, w)
+		self.max_h = max(self.max_h, h)
 
-		# Track max width/height seen so far
-		if w > self.max_w:
-			self.max_w = w
-		if h > self.max_h:
-			self.max_h = h
-
-		# Store original image (no resizing)
+		# Store original frame; we will pad at flush time
 		self.frames.append(img)
+		self._count += 1
 
-		# Save/update GIF with padded frames
-		self._save_gif()
+		# Optional periodic flush
+		if self.write_every and self._count % self.write_every == 0:
+			self._flush()
 
+	def close(self) -> None:
+		if self._closed:
+			return
+		self._closed = True
+		self._flush()
 
-	def _save_gif(self):
-		# Build padded frames with identical size (max_w, max_h)
-		padded_frames = []
+	def _flush(self) -> None:
+		if self.gif_path is None or not self.frames:
+			return
+
+		# Pad all frames to identical size (max_w, max_h)
+		padded = []
 		for img in self.frames:
 			w, h = img.size
-
-			# Create a new transparent/solid background canvas
 			canvas = Image.new(self.mode, (self.max_w, self.max_h), self.bg_color)
 
 			if self.center:
@@ -67,9 +91,6 @@ class graphviz_sink:
 				offset = (0, 0)
 
 			canvas.paste(img, offset)
+			padded.append(np.asarray(canvas, dtype=np.uint8))
 
-			# Convert to numpy array for imageio
-			frame_array = np.array(canvas, dtype=np.uint8)
-			padded_frames.append(frame_array)
-
-		imageio.mimsave(self.gif_path, padded_frames, fps=self.fps, loop=0)
+		imageio.mimsave(self.gif_path, padded, fps=self.fps, loop=0)
