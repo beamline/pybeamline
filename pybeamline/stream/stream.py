@@ -131,6 +131,7 @@ class Stream(Generic[T]):
         on_error: Optional[Callable[[Exception], None]] = None,
         on_completed: Optional[Callable[[], None]] = None,
         scheduler=None) -> DisposableBase:
+
         if base_sink is not None:
             self.sink(base_sink, blocking)
         else:
@@ -158,7 +159,6 @@ class Stream(Generic[T]):
         for op in operators:
             stream = op(stream)
         return stream
-
 
     def merge(self, *others: 'Stream[T]') -> 'Stream[T]':
         observables = [self._observable] + [o._observable for o in others]
