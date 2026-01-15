@@ -11,6 +11,7 @@ from pybeamline.stream.stream import Stream
 class TestTemporalProfileConformance(unittest.TestCase):
 
     def setUp(self):
+
         base_time = datetime(2025, 1, 1, 9, 0, 0)
         self.events = [
             BEvent("A", "c1", event_time=base_time),

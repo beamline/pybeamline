@@ -2,12 +2,12 @@ import unittest
 from datetime import timedelta, datetime
 from typing import Callable
 
-from build.lib.pybeamline.stream.stream import Stream
 from pybeamline.algorithms.conformance.soft.pdfa_conformance import PdfaConformanceMapper
 from pybeamline.algorithms.conformance.soft.soft_conformance_report import SoftConformanceReport
 from pybeamline.bevent import BEvent
 from pybeamline.models.pdfa.pdfa import Pdfa
 from pybeamline.stream.base_sink import BaseSink
+from pybeamline.stream.stream import Stream
 
 
 class TestSoftConformance(unittest.TestCase):
