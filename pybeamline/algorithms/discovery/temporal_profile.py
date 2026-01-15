@@ -11,13 +11,13 @@ from pybeamline.stream.base_map import BaseMap
 def temporal_profile_discovery_mapper() -> BaseMap[List[BEvent], TemporalProfile]:
     return TemporalProfileDiscoveryMapper()
 
-class TemporalProfileDiscoveryMapper(BaseMap[List[BEvent], TemporalProfile]):
+class TemporalProfileDiscoveryMapper(BaseMap[BEvent, TemporalProfile]):
 
     def __init__(self):
         self.events = []
 
-    def transform(self, value: List[BEvent]) -> Optional[List[TemporalProfile]]:
-        self.events.extend(value)
+    def transform(self, value: BEvent) -> Optional[List[TemporalProfile]]:
+        self.events.append(value)
         tp_discovery = TemporalProfileDiscovery(self.events)
         return [tp_discovery.apply()]
 
