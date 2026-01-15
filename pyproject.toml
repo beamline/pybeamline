@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybeamline"
-version = "2.0.6"
+version = "2.0.0"
 requires-python = ">=3.9"
 description = "Streaming Process Mining"
 readme = "README.md"
@@ -34,21 +34,9 @@ dependencies = [
 Homepage = "https://beamline.cloud/"
 Issues = "https://github.com/beamline/pybeamline/issues"
 
-#[tool.setuptools.packages.find]
-#where = ["."]
-#include = ["pybeamline"]
-[tool.setuptools]
-packages = [
-    "pybeamline",
-    "pybeamline.filters",
-    "pybeamline.sources",
-    "pybeamline.stream",
-    "pybeamline.mappers",
-    "pybeamline.algorithms",
-    "pybeamline.algorithms.conformance",
-    "pybeamline.algorithms.discovery",
-    "pybeamline.algorithms.oc",
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pybeamline*"]
 
 [project.optional-dependencies]
 dev = [
