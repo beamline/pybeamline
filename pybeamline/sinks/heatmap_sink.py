@@ -4,10 +4,12 @@ import numpy as np
 import imageio.v2 as imageio
 from io import BytesIO
 from typing import Dict, Tuple, Optional, Any
-
-from IPython.display import clear_output as _clear_output
-
 from pybeamline.stream.base_sink import BaseSink
+
+try:
+    from IPython.display import clear_output as _clear_output
+except Exception:
+    _clear_output = None
 
 Counts = Dict[Tuple[Any, Any], float]
 
@@ -21,6 +23,7 @@ class heatmap_sink(BaseSink[Counts]):
         write_every: Optional[int] = None,   # e.g. 20; None = only on close
         figsize=(5, 4),
         dpi: int = 120,
+        display_in_notebook: bool = True,
     ):
         self.title = title
         self.value_label = value_label
@@ -29,6 +32,7 @@ class heatmap_sink(BaseSink[Counts]):
         self.write_every = write_every
         self.figsize = figsize
         self.dpi = dpi
+        self.display_in_notebook = display_in_notebook
 
         self.frames = []
         self._count = 0
@@ -71,7 +75,9 @@ class heatmap_sink(BaseSink[Counts]):
             self._count += 1
             if self.write_every and self._count % self.write_every == 0:
                 self._flush()
-        else:
+
+        if self.display_in_notebook and _clear_output is not None:
+            _clear_output(wait=True)
             plt.show()
             plt.close(fig)
 

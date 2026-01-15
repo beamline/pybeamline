@@ -125,6 +125,19 @@ class Stream(Generic[T]):
 
     def subscribe(
         self,
+        base_sink: BaseSink[T] = None,
+        blocking: bool = True,
+        on_next: Optional[Callable[[T], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
+        on_completed: Optional[Callable[[], None]] = None,
+        scheduler=None) -> DisposableBase:
+        if base_sink is not None:
+            self.sink(base_sink, blocking)
+        else:
+            self._subscribe(on_next=on_next, on_error=on_error, on_completed=on_completed, scheduler=scheduler)
+
+    def _subscribe(
+        self,
         on_next: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
         on_completed: Optional[Callable[[], None]] = None,

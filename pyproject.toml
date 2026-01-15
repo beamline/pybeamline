@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybeamline"
-version = "2.0.6"
+version = "2.0.0"
 requires-python = ">=3.9"
 description = "Streaming Process Mining"
 readme = "README.md"

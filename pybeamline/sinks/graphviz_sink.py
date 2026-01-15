@@ -11,8 +11,10 @@ from pybeamline.stream.base_sink import BaseSink
 
 try:
 	from IPython.display import clear_output as _clear_output
+	from IPython.display import display as _display
 except Exception:
 	_clear_output = None
+	_display = None
 
 
 class graphviz_sink(BaseSink[str]):
@@ -24,6 +26,7 @@ class graphviz_sink(BaseSink[str]):
 			bg_color=(255, 255, 255),
 			center: bool = True,
 			write_every: Optional[int] = None,  # e.g. 20; None = only on close
+			display_in_notebook: bool = True,
 	):
 		self.gif_path = gif_path
 		self.fps = fps
@@ -31,6 +34,7 @@ class graphviz_sink(BaseSink[str]):
 		self.bg_color = bg_color
 		self.center = center
 		self.write_every = write_every
+		self.display_in_notebook = display_in_notebook
 
 		self.frames = []  # store PIL Images
 		self.max_w = 0
@@ -39,19 +43,16 @@ class graphviz_sink(BaseSink[str]):
 		self._closed = False
 
 	def consume(self, dot_string: str) -> None:
-		if self._closed:
-			raise RuntimeError("GraphvizSink.consume() called after close().")
+		src = Source(dot_string)
 
-		if not self.gif_path:
-			if _clear_output is not None:
-				_clear_output(wait=True)
-			display(Source(dot_string))
+		if self.display_in_notebook and _clear_output is not None and _display is not None:
+			_clear_output(wait=True)
+			_display(src)
 
 		if self.gif_path is None:
 			return
 
 		# Render DOT -> PNG bytes
-		src = Source(dot_string)
 		png_data = src.pipe(format="png")
 
 		# PIL image, normalized mode
