@@ -22,7 +22,7 @@ def temporal_profile_conformance(temporal_profile: TemporalProfile, parameters: 
 class TemporalProfileConformanceMapper(BaseMap[BEvent, Any]):
 
 	def __init__(self, temporal_profile: TemporalProfile, parameters: Optional[Dict] = None):
-		print("params",parameters)
+ 		# print("params",parameters)
 		if parameters is not None:
 			self._streaming: TemporalProfileStreamingConformance  = temporal_conformance_checker.apply(temporal_profile, parameters=parameters)
 		else:
@@ -34,7 +34,7 @@ class TemporalProfileConformanceMapper(BaseMap[BEvent, Any]):
 		self._streaming.receive(ev)
 		self._processed_events += 1
 		res = self._streaming.get()
-		print('res:', res)
+		# print('res:', res)
 		return [res] if res is not None else None
 
 	def get_processed_event_num(self) -> int:
