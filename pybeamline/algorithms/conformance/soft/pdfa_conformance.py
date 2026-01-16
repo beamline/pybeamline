@@ -8,6 +8,10 @@ from pybeamline.models.pdfa.pdfa import Pdfa
 from pybeamline.stream.base_map import BaseMap
 
 
+def soft_conformance(model: Pdfa, alpha: float, max_cases_to_store: int = 1000, result_refresh_rate = 10) -> "PdfaConformanceMapper":
+	return PdfaConformanceMapper(model, alpha, max_cases_to_store, result_refresh_rate)
+
+
 class PdfaConformanceMapper(BaseMap[BEvent, SoftConformanceReport]):
 
     def __init__(self, model: Pdfa, alpha: float, max_cases_to_store: int = 1000, result_refresh_rate = 10):
