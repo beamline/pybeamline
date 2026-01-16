@@ -17,4 +17,10 @@ class SlidingWindowToLog(BaseMap[List[AbstractEvent], DataFrame]):
         return [self._list_to_log(value)]
 
     def _list_to_log(self, events: List[AbstractEvent]) -> DataFrame:
-        return DataFrame([e.to_dict() for e in events])
+        df = DataFrame([e.to_dict() for e in events])
+        if not {"event_attributes", "concept:name", "time:timestamp"}.issubset(df.columns):
+            return None
+
+        df = df.rename(columns={"concept:name": "case:concept:name"})
+        df["concept:name"] = df["event_attributes"].str["concept:name"]
+        return df
