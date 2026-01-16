@@ -3,14 +3,14 @@ from typing_extensions import override
 
 from pybeamline.stream.base_map import BaseMap
 
-def print_operator(format_method: str = None) -> BaseMap[Any, Any]:
-    return PrintOperator(format_method=format_method)
+def print_operator(format_string: str = None) -> BaseMap[Any, Any]:
+    return PrintOperator(format_string=format_string)
 
 
 class PrintOperator(BaseMap[Any, Any]):
 
-    def __init__(self, format_method: str = None):
-        self.format = format_method
+    def __init__(self, format_string: str = None):
+        self.format = format_string
 
 
     @override
