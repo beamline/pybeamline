@@ -255,13 +255,13 @@ class BehavioralModelBuilder:
             self.__F[relation] = sys.maxsize
             self.__P[relation] = (sys.maxsize, -1)
 
-            for (A, B) in self.__B:
-                if A in start_states:
-                    self.__set_p((A, B))
+        for (A, B) in self.__B:
+            if A in start_states:
+                self.__set_p((A, B))
 
-            for (A, B) in self.__B:
-                if B in end_states:
-                    self.__set_f((A, B))
+        for (A, B) in self.__B:
+            if B in end_states:
+                self.__set_f((A, B))
 
 
     def from_petri_net(self, petri_net: PetriNet, init_marking: Marking, final_marking: Marking):
