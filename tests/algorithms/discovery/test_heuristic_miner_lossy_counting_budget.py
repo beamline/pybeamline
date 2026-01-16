@@ -1,5 +1,7 @@
 import unittest
 from datetime import datetime, timedelta
+from typing import Any, Callable
+
 from pybeamline.bevent import BEvent
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting_budget import (
@@ -7,7 +9,17 @@ from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting_budget impo
     heuristics_miner_lossy_counting_budget
 )
 from pybeamline.sources import log_source
+from pybeamline.stream.base_sink import BaseSink, T
 from pybeamline.stream.stream import Stream
+
+class CollectorSink(BaseSink[Any]):
+
+    def __init__(self, select_method: Callable = lambda x:x):
+        self.select_method = select_method
+        self.data = []
+
+    def consume(self, item: T) -> None:
+        self.data.append(self.select_method(item))
 
 
 class TestHeuristicsMinerLossyCountingBudget(unittest.TestCase):
@@ -55,14 +67,14 @@ class TestHeuristicsMinerLossyCountingBudget(unittest.TestCase):
             list(Stream.from_iterable([unflat_event]).pipe(miner).to_list())
 
     def test_lossy_counting_budget_cleaning(self):
-        emitted = []
+        collector = CollectorSink()
         log_source(["ADCB", "ABCD", "ABCD", "ABCD", "ABCD", "ABCD"]).pipe(
             heuristics_miner_lossy_counting_budget(budget=10, model_update_frequency=6)
-        ).subscribe(lambda e: emitted.append(e))
+        ).sink(collector)
 
-        self.assertGreaterEqual(len(emitted), 1)
-        first_model = emitted[0]
-        final_model = emitted[-1]
+        self.assertGreaterEqual(len(collector.data), 1)
+        first_model = collector.data[0]
+        final_model = collector.data[-1]
 
         self.assertIn(('A', 'D'), first_model.dfg)
         self.assertNotIn(('A', 'D'), final_model.dfg, msg="Expected edge A → D to be pruned due to budget constraints")

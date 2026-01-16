@@ -1,5 +1,8 @@
 import unittest
 from datetime import datetime, timedelta
+from typing import Any, Callable
+
+from pybeamline.algorithms.lambda_operator import LambdaOperator
 from pybeamline.bevent import BEvent
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import (
@@ -7,7 +10,17 @@ from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import (
     heuristics_miner_lossy_counting
 )
 from pybeamline.sources import log_source
+from pybeamline.stream.base_sink import BaseSink, T
 from pybeamline.stream.stream import Stream
+
+class CollectorSink(BaseSink[Any]):
+
+    def __init__(self, select_method: Callable = lambda x: x):
+        self.data = []
+        self.select_method = select_method
+
+    def consume(self, item: T) -> None:
+        self.data.append(self.select_method(item))
 
 
 class TestHeuristicsMinerLossyCounting(unittest.TestCase):
@@ -56,15 +69,14 @@ class TestHeuristicsMinerLossyCounting(unittest.TestCase):
             list(Stream.from_iterable([unflat_event]).pipe(miner).to_list())
 
     def test_lossy_counting_bucket_cleaning_bevent(self):
-        emitted = []
+        collector = CollectorSink()
         log_source(["ADCB","ABCD","ABCD","ABCD","ABCD","ABCD"]).pipe(
             heuristics_miner_lossy_counting(max_approx_error=0.05,model_update_frequency=6)
-        ).subscribe(lambda e: emitted.append(e))
+        ).sink(collector)
+        self.assertGreaterEqual(len(collector.data), 1)
 
-        self.assertGreaterEqual(len(emitted), 1)
-
-        final_model = emitted[-1]
-        first_model = emitted[0]
+        final_model = collector.data[-1]
+        first_model = collector.data[0]
 
         self.assertIn(('A', 'D'), first_model.dfg)
         # Check that the 'A' → 'D' edge was pruned

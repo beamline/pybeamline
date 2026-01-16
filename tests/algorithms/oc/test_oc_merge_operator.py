@@ -13,7 +13,7 @@ from pybeamline.algorithms.oc.strategies.base import RelativeFrequencyBasedStrat
 from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.algorithms.oc.oc_merge_operator import OCMergeOperator
-from pybeamline.stream.base_sink import BaseSink, T
+from pybeamline.stream.base_sink import BaseSink
 from pybeamline.stream.rx_operator import RxOperator
 
 class CollectorSink(BaseSink[Any]):

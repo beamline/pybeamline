@@ -6,9 +6,11 @@ from pybeamline.algorithms.discovery.temporal_profile import (
     TemporalProfileDiscovery,
     TemporalProfileDiscoveryMapper,
 )
+from pybeamline.stream.stream import Stream
 
 
 class TestTemporalProfileDiscovery(unittest.TestCase):
+
     def test_convert_b_event_to_dataframe_mapping_and_sort(self):
         t0 = datetime(2024, 1, 1, 12, 0, 0)
         e1 = BEvent("A", "case1", event_time=t0 + timedelta(seconds=10))
@@ -42,10 +44,10 @@ class TestTemporalProfileDiscovery(unittest.TestCase):
         ]
 
         mapper = TemporalProfileDiscoveryMapper()
-        out = mapper.transform(events)
+        out = Stream.from_iterable(events).pipe(mapper).to_list()
 
         self.assertIsInstance(out, list)
-        self.assertEqual(len(out), 1)
+        self.assertEqual(len(out), 3)
         self.assertIsNotNone(out[0])
 
 

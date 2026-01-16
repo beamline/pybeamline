@@ -1,13 +1,11 @@
-import time
+from pathlib import Path
 import unittest
 from typing import Any
 
-from pybeamline.algorithms.lambda_operator import LambdaOperator
 from pybeamline.boevent import BOEvent
 from pybeamline.mappers.take_mapper import take
 from pybeamline.sources.ocel2_log_source_from_file import ocel2_log_source_from_file
-from pybeamline.stream.base_sink import BaseSink, T
-from pybeamline.stream.rx_operator import RxOperator
+from pybeamline.stream.base_sink import BaseSink
 from pybeamline.stream.stream import Stream
 
 
@@ -28,7 +26,7 @@ class TestOcelJsonLogSource(unittest.TestCase):
                 self.elements.append(item)
 
         # Path to the test file
-        test_file_path = "./tests/logistics.jsonocel"
+        test_file_path = str(Path(__file__).parent.parent / "logistics.jsonocel")
         # Generate OCEL from the test file
         ocel_source = ocel2_log_source_from_file(test_file_path)
         # Check if the generated OCEL is not None
@@ -36,8 +34,7 @@ class TestOcelJsonLogSource(unittest.TestCase):
         # Capture first 10 events
         collector = CollectorSink()
         ocel_source.pipe(
-            LambdaOperator(lambda event: event),
-            RxOperator(take(10)),
+            take(10),
         ).sink(collector)
 
         # Check if the number of emitted events matches the expected count
