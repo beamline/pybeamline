@@ -36,7 +36,10 @@ class OCMergeOperatorMapper(BaseMap[Dict[str, Any], Dict[str,Union[OCDFG,AER]]])
         self.oc_operator = OCMergeOperator()
 
     def transform(self, value: Dict[str, Any]) -> Optional[List[Dict[str,Union[OCDFG,AER]]]]:
-        return [self.oc_operator.process(value)]
+        result = self.oc_operator.process(value)
+        if result is not None:
+            return [self.oc_operator.process(value)]
+        return None
 
 
 class OCMergeOperator:
