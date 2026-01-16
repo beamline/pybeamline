@@ -1,6 +1,6 @@
-from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, List, Optional
+from typing_extensions import final
 
 from reactivex import create
 
@@ -17,6 +17,7 @@ class BaseMap(Generic[T, R], BaseOperator[Stream[T], Stream[R]], ABC):
     def transform(self, value: T) -> Optional[List[R]]:
         pass
 
+    @final
     def apply(self, stream: Stream[T]) -> Stream[R]:
         def on_subscribe(observer, scheduler):
             def on_next(item):
