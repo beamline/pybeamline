@@ -1,33 +1,36 @@
 import json
-from typing import Optional
 
 import paho.mqtt.client as mqtt
-from reactivex import Observable, abc
 
 from pybeamline.bevent import BEvent
+from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.stream import Stream
 
 
-def mqttxes_source(
-        broker: str,
-        port: int,
-        base_topic: str) -> Observable[BEvent]:
+def mqttxes_source(broker: str, port: int, base_topic: str) -> Stream[BEvent]:
+    return Stream.source(MqttSource(broker, port, base_topic))
 
-    def subscribe(
-            observer: abc.ObserverBase[BEvent],
-            scheduler_: Optional[abc.SchedulerBase] = None
-    ) -> abc.DisposableBase:
+
+class MqttSource(BaseSource[BEvent]):
+
+    def __init__(self, broker: str, port: int, base_topic: str) -> None:
+        self.broker = broker
+        self.port = port
+        self.base_topic = base_topic
+
+    def execute(self):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 print("Connected to MQTT broker")
-                if base_topic.endswith("/"):
-                    client.subscribe(base_topic + '#')
+                if self.base_topic.endswith("/"):
+                    client.subscribe(self.base_topic + '#')
                 else:
-                    client.subscribe(base_topic + '/#')
+                    client.subscribe(self.base_topic + '/#')
             else:
-                observer.on_error(f"Connection failed with code {rc}")
+                self.error(Exception("Connection failed with code {rc}"))
 
         def on_message(client, userdata, msg):
-            path = msg.topic.replace(base_topic, '').split('/')
+            path = msg.topic.replace(self.base_topic, '').split('/')
             if path[0] == '':
                 path.pop(0)
             activity_name = path[len(path) - 1]
@@ -43,20 +46,20 @@ def mqttxes_source(
                         e.event_attributes[k] = attributes[k]
             except json.JSONDecodeError:
                 print("Error decoding JSON")
-            observer.on_next(e)
+            self.produce(e)
 
         def on_disconnect(client, userdata, rc):
             if rc != 0:
-                observer.on_error(f"Unexpected disconnection. Code: {rc}")
+                self.error(Exception(f"Unexpected disconnection. Code: {rc}"))
             else:
-                observer.on_completed()
+                self.completed()
 
         client = mqtt.Client()
         client.on_connect = on_connect
         client.on_message = on_message
         client.on_disconnect = on_disconnect
 
-        client.connect(broker, port, 60)
+        client.connect(self.broker, self.port, 60)
         client.loop_start()
 
         def dispose():
@@ -64,5 +67,3 @@ def mqttxes_source(
             client.disconnect()
 
         return dispose
-
-    return Observable(subscribe)

@@ -1,11 +1,11 @@
 import math
-from asyncio import Protocol
-from typing import Any, Dict, Set, Tuple
-from reactivex import Observable, from_iterable, just
+from typing import Dict, Set, Tuple, Protocol
+
+from pybeamline.stream.stream import Stream
 from pybeamline.utils.commands import Command, create_command
 
 class InclusionStrategy(Protocol):
-    def evaluate(self, model_event: dict) -> Observable[dict]:
+    def evaluate(self, model_event: dict) -> Stream[dict]:
         ... # pragma: no cover
 
 class RelativeFrequencyBasedStrategy(InclusionStrategy):
@@ -23,9 +23,9 @@ class RelativeFrequencyBasedStrategy(InclusionStrategy):
         self.__N = 0
         self.__D_A: Set[str] = set() # Set of active object types
 
-    def evaluate(self, model_event: dict) -> Observable[dict]:
+    def evaluate(self, model_event: dict) -> Stream[dict]:
         if model_event.get("type") != "dfg":
-            return just(model_event)
+            return Stream.of(model_event)
 
         obj_type = model_event["object_type"]
         self.__D_F[obj_type] = self.__D_F.get(obj_type, 0) + 1
@@ -46,7 +46,7 @@ class RelativeFrequencyBasedStrategy(InclusionStrategy):
                 commands.append(create_command(Command.INACTIVE, ot))
 
         commands.append(model_event)
-        return from_iterable(commands)
+        return Stream.from_iterable(commands)
 
 
 class LossyCountingStrategy(InclusionStrategy):
@@ -65,9 +65,9 @@ class LossyCountingStrategy(InclusionStrategy):
         self.__observed_emitted_models = 1
         self.__D_C: Dict[str, Tuple[int, int]] = {}  # {object_type: (frequency, delta)}
 
-    def evaluate(self, model_event: dict) -> Observable[dict]:
+    def evaluate(self, model_event: dict) -> Stream[dict]:
         if model_event.get("type") != "dfg":
-            return just(model_event)
+            return Stream.of(model_event)
 
         b_curr = int(math.ceil(self.__observed_emitted_models / self.__bucket_width))
 
@@ -93,7 +93,7 @@ class LossyCountingStrategy(InclusionStrategy):
 
         commands.append(model_event)
         self.__observed_emitted_models += 1
-        return from_iterable(commands)
+        return Stream.from_iterable(commands)
 
 class SlidingWindowStrategy(InclusionStrategy):
     """
@@ -113,7 +113,7 @@ class SlidingWindowStrategy(InclusionStrategy):
 
     def evaluate(self, model_event: dict):
         if model_event.get("type") != "dfg":
-            return just(model_event)
+            return Stream.of(model_event)
 
         self.observed_events += 1
         obj_type = model_event["object_type"]
@@ -138,4 +138,4 @@ class SlidingWindowStrategy(InclusionStrategy):
             del self.D_W[obj_type]
 
         commands.append(model_event)
-        return from_iterable(commands)
+        return Stream.from_iterable(commands)

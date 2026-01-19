@@ -1,20 +1,22 @@
 from pybeamline.bevent import BEvent
-from typing import Iterable, Optional
-from reactivex import Observable, abc
-from reactivex.disposable import CompositeDisposable
+from typing import Iterable
+
+from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.stream import Stream
+
+def string_test_source(iterable: Iterable[str]) -> Stream[BEvent]:
+    return Stream.source(StringTestSource(iterable))
 
 
-def string_test_source(iterable: Iterable[str], scheduler: Optional[abc.SchedulerBase] = None) -> Observable[BEvent]:
-    def subscribe(
-            observer: abc.ObserverBase[BEvent], scheduler_: Optional[abc.SchedulerBase] = None
-    ) -> abc.DisposableBase:
+class StringTestSource(BaseSource[BEvent]):
+
+    def __init__(self, iterable: Iterable[str]):
+        self._iterable = iterable
+
+    def execute(self) -> None:
         trace_id = 1
-        for trace in iterable:
+        for trace in self._iterable:
             for event in trace:
-                observer.on_next(
-                    BEvent(event, "case_" + str(trace_id), "Process"))
+                self.produce(BEvent(event, "case_" + str(trace_id), "Process"))
             trace_id += 1
-        observer.on_completed()
-        return CompositeDisposable()
-
-    return Observable(subscribe)
+        self.completed()

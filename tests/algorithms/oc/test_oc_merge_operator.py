@@ -1,5 +1,10 @@
 import unittest
+import threading
+from typing import Any, Callable
+
 from reactivex import operators as ops
+
+
 from pybeamline.algorithms.discovery import heuristics_miner_lossy_counting_budget
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import heuristics_miner_lossy_counting
 from pybeamline.algorithms.oc.oc_operator import OCOperator, oc_operator
@@ -8,6 +13,17 @@ from pybeamline.algorithms.oc.strategies.base import RelativeFrequencyBasedStrat
 from pybeamline.models.ocdfg import OCDFG
 from pybeamline.sources.dict_ocel_test_source import dict_test_ocel_source
 from pybeamline.algorithms.oc.oc_merge_operator import OCMergeOperator
+from pybeamline.stream.base_sink import BaseSink
+from pybeamline.stream.rx_operator import RxOperator
+
+class CollectorSink(BaseSink[Any]):
+
+    def __init__(self, select: Callable):
+        self.data = []
+        self.select = select
+
+    def consume(self, item: Any) -> None:
+        self.data.append(self.select(item))
 
 
 class TestOCMergeOperator(unittest.TestCase):
@@ -63,16 +79,17 @@ class TestOCMergeOperator(unittest.TestCase):
             "Invoice": lambda : heuristics_miner_lossy_counting_budget(model_update_frequency=1),
         })
         self.oc_merger = OCMergeOperator()
+        self.done = threading.Event()
 
     def test_oc_merger_with_heuristic(self):
         # Test the OCDFG merger with the combined log
-        emitted_models = []
+        collector = CollectorSink(lambda x: x["ocdfg"])
         self.combined_log.pipe(
             self.oc_operator.operator,
             oc_merge_operator()
-        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
+        ).sink(collector)
 
-        for ocdfg in emitted_models:
+        for ocdfg in collector.data:
             # No empty models should be emitted
             self.assertTrue(len(ocdfg.edges.keys()) > 0)
             self.assertTrue(len(ocdfg.activities) > 0)
@@ -86,14 +103,14 @@ class TestOCMergeOperator(unittest.TestCase):
 
     def test_oc_merger_with_heuristic_budget(self):
         # Test the OCDFG merger with the combined log
-        emitted_models = []
+        collector = CollectorSink(lambda x: x["ocdfg"])
         self.combined_log.pipe(
             self.oc_operator_with_budget.operator,
             oc_merge_operator(),
-            ops.filter(lambda x: x.get("ocdfg") is not None),
-        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
+            RxOperator(ops.filter(lambda x: x.get("ocdfg") is not None)),
+        ).sink(collector)
 
-        for merged_ocdfg in emitted_models:
+        for merged_ocdfg in collector.data:
             if merged_ocdfg is None or not merged_ocdfg.edges:
                 continue
             # No empty models should be emitted
@@ -108,34 +125,34 @@ class TestOCMergeOperator(unittest.TestCase):
 
 
     def test_oc_merger_with_emit_frequency_two_workflows(self):
-        emitted_models = []
+        collector = CollectorSink(lambda x: x["ocdfg"])
         self.combined_log_two_workflows.pipe(
             oc_operator(inclusion_strategy=RelativeFrequencyBasedStrategy(frequency_threshold=0.02)),
             oc_merge_operator()
-        ).subscribe(lambda merged_ocdfg: emitted_models.append(merged_ocdfg["ocdfg"]))
+        ).sink(collector)
 
-        self.assertTrue({"Guest", "Booking"}.issubset(emitted_models[-1].object_types))
-        self.assertTrue({"Customer", "Order", "Item"}.issubset(emitted_models[6].object_types))
-        self.assertIn("OCDFG:", emitted_models[6].__str__())
-        repr_str = repr(emitted_models[-1])
+        self.assertTrue({"Guest", "Booking"}.issubset(collector.data[-1].object_types))
+        self.assertTrue({"Customer", "Order", "Item"}.issubset(collector.data[6].object_types))
+        self.assertIn("OCDFG:", collector.data[6].__str__())
+        repr_str = repr(collector.data[-1])
         self.assertIn("OCDFG", repr_str)
         self.assertIn("activities", repr_str)
         self.assertIn('Guest', repr_str)
         self.assertIn("edges=", repr_str)
 
     def test_oc_merger_handles_aer_diagram_correctly(self):
-        emitted_aer_diagrams = []
+        collector = CollectorSink(lambda x: x["aer"])
         self.combined_log_two_workflows.pipe(
             oc_operator(aer_model_max_approx_error=0.01, aer_model_update_frequency=30),
             oc_merge_operator(),
-        ).subscribe(lambda merged_ocdfg: emitted_aer_diagrams.append(merged_ocdfg["aer"]))
+        ).sink(collector)
 
         # Verify that workflow 1 are in the beginning of the emitted AER diagrams
 
-        self.assertTrue(len(emitted_aer_diagrams) > 0)
-        
+        self.assertTrue(len(collector.data) > 0)
+
         # Get removes all entries where relations are empty
-        emitted_aer_diagrams = [aer for aer in emitted_aer_diagrams if aer.relations]
+        emitted_aer_diagrams = [aer for aer in collector.data if aer.relations]
         self.assertIn("Customer", emitted_aer_diagrams[0].get_object_types("Register Customer"))
         self.assertTrue({'Create Order', 'Register Customer', 'Add Item', 'Cancel Order'}.issubset(emitted_aer_diagrams[0].get_activities()))
         self.assertTrue({"Create Booking", "Check In", "Check Out", "Register Guest", "Reserve Room"}.issubset(emitted_aer_diagrams[-1].get_activities()))

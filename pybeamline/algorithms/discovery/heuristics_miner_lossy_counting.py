@@ -1,56 +1,64 @@
 import math
 from pm4py.algo.discovery.heuristics.variants.classic import calculate as compute_dfg
 from pm4py.objects.heuristics_net.obj import HeuristicsNet
-from reactivex import just, empty, throw, from_iterable, Observable
-from reactivex import operators as ops
-from reactivex import Observable
+from typing_extensions import override
+
 from pybeamline.abstractevent import AbstractEvent
 from pybeamline.bevent import BEvent
-from typing import Callable, Union
+from typing import Optional, List
 from pybeamline.boevent import BOEvent
-
+from pybeamline.stream.base_map import BaseMap
 
 def heuristics_miner_lossy_counting(
         model_update_frequency=10,
         max_approx_error=0.001,
         dependency_threshold=0.5,
-        and_threshold=0.8) -> Callable[[Observable], Observable[HeuristicsNet]]:
-    hm = HeuristicsMinerLossyCounting(
+        and_threshold=0.8) -> BaseMap[AbstractEvent, HeuristicsNet]:
+    return HeuristicsMinerLossyCountingMapper(
+        model_update_frequency=model_update_frequency,
         max_approx_error=max_approx_error,
         dependency_threshold=dependency_threshold,
         and_threshold=and_threshold)
 
 
-    def miner(event: AbstractEvent) -> Observable[HeuristicsNet]:
-        if isinstance(event, BOEvent):
+class HeuristicsMinerLossyCountingMapper(BaseMap[AbstractEvent, HeuristicsNet]):
+
+    def __init__(self, model_update_frequency=10,max_approx_error=0.001,dependency_threshold=0.5,and_threshold=0.85):
+        self.model_update_frequency = model_update_frequency
+        self.hm = HeuristicsMinerLossyCounting(
+            max_approx_error=max_approx_error,
+            dependency_threshold=dependency_threshold,
+            and_threshold=and_threshold)
+
+
+    @override
+    def transform(self, value: AbstractEvent) -> Optional[List[HeuristicsNet]]:
+        if isinstance(value, BOEvent):
             # Verify that the event is flattened
-            if len(event.get_object_ids()) != 1:
+            if len(value.get_object_ids()) != 1:
                 raise ValueError("BOEvent should be flattened before supplied to miner")
             # Wrapping BOEvent into BEvent
-            trace_name = event.get_object_ids()[0]
+            trace_name = value.get_object_ids()[0]
             b_event = BEvent(
-                activity_name=event.get_event_name(),
+                activity_name=value.get_event_name(),
                 case_id=trace_name,
-                event_time=event.get_event_time()
+                event_time=value.get_event_time()
             )
-            hm.ingest_event(b_event)
+            self.hm.ingest_event(b_event)
 
-        elif isinstance(event, BEvent):
-            hm.ingest_event(event)
+        elif isinstance(value, BEvent):
+            self.hm.ingest_event(value)
         else:
-            raise TypeError(f"Unsupported event type: {type(event)}")
+            raise TypeError(f"Unsupported event type: {type(value)}")
 
-        if hm.observed_events() % model_update_frequency == 0:
-            return just(hm.get_model())
-        return empty()
-
-    return ops.flat_map(miner)
-
+        if self.hm.observed_events() % self.model_update_frequency == 0:
+            return [self.hm.get_model()]
+        return None
 
 # Class originally developed by Magnus Frederiksen as part of his BSc project at DTU entitled
 # "Development of Process Mining and Complex Event Processing using Python"
 class HeuristicsMinerLossyCounting:
-    def __init__(self, max_approx_error=0.1, dependency_threshold=0, and_threshold=0.8):
+    def __init__(self, max_approx_error=0.1, dependency_threshold=0.0, and_threshold=0.8):
         self.__minimum_dependency_threshold = dependency_threshold  # set dependency threshold to be added to the model
         self.__and_threshold = and_threshold  # set the "and" threshold for when 2 edges leave a node on model
 

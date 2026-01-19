@@ -3,9 +3,8 @@ from datetime import datetime, timedelta
 
 from pybeamline.algorithms.discovery.activity_entity_relation_miner_lossy_counting import activity_entity_relations_miner_lossy_counting, ActivityEntityRelationMinerLossyCounting
 from pybeamline.boevent import BOEvent
-from pybeamline.models.aer import AER
+from pybeamline.stream.stream import Stream
 from pybeamline.utils.cardinality import Cardinality
-from reactivex import from_iterable
 from reactivex.operators import to_list
 
 
@@ -114,7 +113,7 @@ class TestActivityEntityRelationMinerLossyCounting(unittest.TestCase):
         ]
 
         miner = activity_entity_relations_miner_lossy_counting(model_update_frequency=5, max_approx_error=0.2)
-        result = from_iterable(events).pipe(miner, to_list()).run()
+        result = Stream.from_iterable(events).pipe(miner).to_list()
 
         self.assertEqual(len(result), 1)
         model = result[0]

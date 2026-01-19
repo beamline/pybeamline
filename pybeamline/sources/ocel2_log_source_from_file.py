@@ -1,36 +1,32 @@
 import math
-from typing import Optional, Dict, Set, Any
-from reactivex import Observable, abc
-from reactivex.disposable import CompositeDisposable
+from typing import Dict, Any
 from pm4py import OCEL, ocel_sort_by_additional_column, read_ocel2
 from pybeamline.boevent import BOEvent
+from pybeamline.stream.base_source import BaseSource
+from pybeamline.stream.stream import Stream
 
-def ocel2_log_source_from_file(log_path: str, ) -> Observable[BOEvent]:
+
+def ocel2_log_source_from_file(log_path: str, ) -> Stream[BOEvent]:
     """
     Loads an OCEL 2.0 log from a file path and returns it as an Observable of BOEvent objects.
     :param log_path: str
     :return: Observable[BOEvent]
     """
-    return ocel2_log_source(read_ocel2(log_path))
+    return Stream.source(Ocel2LogSource(read_ocel2(log_path)))
 
+class Ocel2LogSource(BaseSource[BOEvent]):
 
-def ocel2_log_source(
-    log: OCEL,
-    scheduler: Optional[abc.SchedulerBase] = None
-) -> Observable[BOEvent]:
-    """
-    Converts an OCEL object into an Observable stream of BOEvent objects,
-    ordered by timestamp if available.
-    """
-    if log.event_timestamp is not None:
-        log = ocel_sort_by_additional_column(log, "ocel:timestamp")
+    def __init__(self, log: OCEL):
+        self.log = log
+        """
+        Converts an OCEL object into an Observable stream of BOEvent objects,
+        ordered by timestamp if available.
+        """
+        if self.log.event_timestamp is not None:
+            self.log = ocel_sort_by_additional_column(log, "ocel:timestamp")
 
-    def subscribe(
-        observer: abc.ObserverBase[BOEvent],
-        scheduler_: Optional[abc.SchedulerBase] = None
-    ) -> abc.DisposableBase:
-
-        for _, event in log.get_extended_table().iterrows():
+    def execute(self):
+        for _, event in self.log.get_extended_table().iterrows():
 
             # Build the omap using columns that start with "ocel:type:" and are not NaN
             omap = {
@@ -55,9 +51,5 @@ def ocel2_log_source(
                 omap=omap,
                 vmap=vmap
             )
-            observer.on_next(bo_event)
-
-        observer.on_completed()
-        return CompositeDisposable()
-
-    return Observable(subscribe)
+            self.produce(bo_event)
+        self.completed()

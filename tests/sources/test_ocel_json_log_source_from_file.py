@@ -1,10 +1,12 @@
-import os
+from pathlib import Path
 import unittest
-from reactivex import Observable
-from reactivex import operators as ops
+from typing import Any
 
 from pybeamline.boevent import BOEvent
+from pybeamline.mappers.take_mapper import take
 from pybeamline.sources.ocel2_log_source_from_file import ocel2_log_source_from_file
+from pybeamline.stream.base_sink import BaseSink
+from pybeamline.stream.stream import Stream
 
 
 class TestOcelJsonLogSource(unittest.TestCase):
@@ -15,24 +17,31 @@ class TestOcelJsonLogSource(unittest.TestCase):
         self.assertIn("File does not exist", str(context.exception))
 
     def test_generate_ocel_source_from_file(self):
+
+        class CollectorSink(BaseSink[Any]):
+            def __init__(self):
+                self.elements = []
+
+            def consume(self, item: Any) -> None:
+                self.elements.append(item)
+
         # Path to the test file
-        test_file_path = "tests/logistics.jsonocel"
+        test_file_path = str(Path(__file__).parent.parent / "logistics.jsonocel")
         # Generate OCEL from the test file
         ocel_source = ocel2_log_source_from_file(test_file_path)
         # Check if the generated OCEL is not None
-        self.assertIsInstance(ocel_source, Observable)
+        self.assertIsInstance(ocel_source, Stream)
         # Capture first 10 events
-        emitted_events = []
+        collector = CollectorSink()
         ocel_source.pipe(
-            ops.map(lambda event: event),
-            ops.take(10),
-        ).subscribe(
-            on_next=lambda x: emitted_events.append(x),
-        )
+            take(10),
+        ).sink(collector)
+
         # Check if the number of emitted events matches the expected count
-        self.assertEqual(len(emitted_events), 10)
+        self.assertEqual(len(collector.elements), 10)
+
         # Check if the emitted events are of type BOEvent
-        for event in emitted_events:
+        for event in collector.elements:
             self.assertIsInstance(event, BOEvent)
 
 

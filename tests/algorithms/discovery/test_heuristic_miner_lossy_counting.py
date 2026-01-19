@@ -1,14 +1,27 @@
 import unittest
 from datetime import datetime, timedelta
+from typing import Any, Callable
+
+from pybeamline.algorithms.lambda_operator import LambdaOperator
 from pybeamline.bevent import BEvent
 from pybeamline.boevent import BOEvent
 from pybeamline.algorithms.discovery.heuristics_miner_lossy_counting import (
     HeuristicsMinerLossyCounting,
     heuristics_miner_lossy_counting
 )
-from reactivex import from_iterable
-from reactivex.operators import to_list
 from pybeamline.sources import log_source
+from pybeamline.stream.base_sink import BaseSink, T
+from pybeamline.stream.stream import Stream
+
+class CollectorSink(BaseSink[Any]):
+
+    def __init__(self, select_method: Callable = lambda x: x):
+        self.data = []
+        self.select_method = select_method
+
+    def consume(self, item: T) -> None:
+        self.data.append(self.select_method(item))
+
 
 class TestHeuristicsMinerLossyCounting(unittest.TestCase):
 
@@ -37,8 +50,7 @@ class TestHeuristicsMinerLossyCounting(unittest.TestCase):
         ]
 
         miner = heuristics_miner_lossy_counting(model_update_frequency=10)
-        result_stream = from_iterable(boevents).pipe(miner, to_list())
-        models = result_stream.run()
+        models = Stream.from_iterable(boevents).pipe(miner).to_list()
 
         self.assertGreaterEqual(len(models), 1)
         for model in models:
@@ -48,24 +60,23 @@ class TestHeuristicsMinerLossyCounting(unittest.TestCase):
     def test_invalid_event_type_raises(self):
         miner = heuristics_miner_lossy_counting()
         with self.assertRaises(TypeError):
-            list(from_iterable(["not-an-event"]).pipe(miner, to_list()).run())
+            list(Stream.from_iterable(["not-an-event"]).pipe(miner).to_list())
 
     def test_unflattened_bo_event_raises(self):
         unflat_event = BOEvent("e1", "A",{"Customer": {"c1", "c2"}},datetime.now())
         miner = heuristics_miner_lossy_counting()
         with self.assertRaises(ValueError):
-            list(from_iterable([unflat_event]).pipe(miner, to_list()).run())
+            list(Stream.from_iterable([unflat_event]).pipe(miner).to_list())
 
     def test_lossy_counting_bucket_cleaning_bevent(self):
-        emitted = []
+        collector = CollectorSink()
         log_source(["ADCB","ABCD","ABCD","ABCD","ABCD","ABCD"]).pipe(
             heuristics_miner_lossy_counting(max_approx_error=0.05,model_update_frequency=6)
-        ).subscribe(lambda e: emitted.append(e))
+        ).sink(collector)
+        self.assertGreaterEqual(len(collector.data), 1)
 
-        self.assertGreaterEqual(len(emitted), 1)
-
-        final_model = emitted[-1]
-        first_model = emitted[0]
+        final_model = collector.data[-1]
+        first_model = collector.data[0]
 
         self.assertIn(('A', 'D'), first_model.dfg)
         # Check that the 'A' → 'D' edge was pruned
