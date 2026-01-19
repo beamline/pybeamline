@@ -91,7 +91,7 @@ class Visualizer:
         self.counter += 1
 
     def draw_aer_diagram(self, model: AER, max_activities_per_column=5) -> Graph:
-        dot = Graph(name="Activity Entity Relations", format="png")
+        dot = Digraph(name="Activity Entity Relations", format="png")
         dot.attr(compound="true", fontsize="14")
 
         col_idx = 0
