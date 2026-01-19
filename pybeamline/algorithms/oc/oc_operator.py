@@ -112,7 +112,8 @@ class OCOperator(BaseMap[BOEvent, dict]):
         aer_stream.subscribe(
             on_next=lambda msg: (self.__output_subject.on_next(msg), self.__output_buffer.append(msg)),
             on_error=lambda e: print(f"[AER-STREAM] error:", e),
-            on_completed=lambda: None
+            on_completed=lambda: None,
+            blocking=False
         )
 
         # Collect output subject emissions into buffer with inclusion strategy
@@ -121,7 +122,8 @@ class OCOperator(BaseMap[BOEvent, dict]):
         ).subscribe(
             on_next=lambda item: self.__output_buffer.append(item),
             on_error=lambda e: print(f"[OUTPUT] error:", e),
-            on_completed=lambda: None
+            on_completed=lambda: None,
+            blocking=False
         )
 
     def _register_stream(self, obj_type: str, miner: Optional[BaseOperator[Stream[Any], Stream[Any]]] = None):
@@ -144,7 +146,8 @@ class OCOperator(BaseMap[BOEvent, dict]):
         dfg_stream.subscribe(
             on_next=lambda msg: self.__output_subject.on_next(msg),
             on_error=lambda e: print(f"[{obj_type}] error:", e),
-            on_completed=lambda: None
+            on_completed=lambda: None,
+            blocking=False
         )
 
     def _route_to_miner(self, event: BOEvent):

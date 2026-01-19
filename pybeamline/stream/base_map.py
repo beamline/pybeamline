@@ -29,5 +29,5 @@ class BaseMap(Generic[T, R], BaseOperator[Stream[T], Stream[R]], ABC):
                 observer.on_error(e)
             def on_completed():
                 observer.on_completed()
-            stream.subscribe(on_next=on_next, on_error=on_error, on_completed=on_completed)
+            stream.subscribe(on_next=on_next, on_error=on_error, on_completed=on_completed, blocking=False)
         return Stream(create(on_subscribe))

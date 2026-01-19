@@ -1,10 +1,10 @@
-from pybeamline.bevent import BEvent
 from typing import Union
 from pm4py.objects.log.obj import EventLog
 from pm4py.util import xes_constants as xes_util
 from pm4py import read_xes, convert_to_dataframe
 import pandas as pd
 
+from pybeamline.bevent import BEvent
 from pybeamline.stream.base_source import BaseSource
 from pybeamline.stream.stream import Stream
 

@@ -16,5 +16,6 @@ class LambdaOperator(BaseMap[Any, Any]):
 
     @override
     def transform(self, value: Any) -> Optional[List[Any]]:
-        return [self._lambda(value)]
+        res = self._lambda(value)
+        return [res] if res is not None else None
 

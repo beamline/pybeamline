@@ -124,26 +124,51 @@ class Stream(Generic[T]):
         return result
 
     def subscribe(
-        self,
-        base_sink: BaseSink[T] = None,
-        blocking: bool = True,
-        on_next: Optional[Callable[[T], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_completed: Optional[Callable[[], None]] = None,
-        scheduler=None) -> DisposableBase:
+            self,
+            base_sink: BaseSink[T] = None,
+            blocking: bool = True,
+            on_next: Optional[Callable[[T], None]] = None,
+            on_error: Optional[Callable[[Exception], None]] = None,
+            on_completed: Optional[Callable[[], None]] = None,
+            scheduler=None) -> DisposableBase:
 
+        # If a base_sink is provided, use the existing sink logic
         if base_sink is not None:
-            self.sink(base_sink, blocking)
-        else:
-            self._subscribe(on_next=on_next, on_error=on_error, on_completed=on_completed, scheduler=scheduler)
+            return self.sink(base_sink, blocking)
+
+        # Otherwise, handle the functional subscription
+        completed_event = threading.Event()
+
+        def _on_completed():
+            if on_completed:
+                on_completed()
+            completed_event.set()
+
+        def _on_error(e):
+            if on_error:
+                on_error(e)
+            completed_event.set()
+
+        subscription = self._subscribe(
+            on_next=on_next,
+            on_error=_on_error,
+            on_completed=_on_completed,
+            scheduler=scheduler
+        )
+
+        if blocking:
+            completed_event.wait()
+
+        return subscription
 
     def _subscribe(
-        self,
-        on_next: Optional[Callable[[T], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_completed: Optional[Callable[[], None]] = None,
-        scheduler=None
-    ):
+            self,
+            on_next: Optional[Callable[[T], None]] = None,
+            on_error: Optional[Callable[[Exception], None]] = None,
+            on_completed: Optional[Callable[[], None]] = None,
+            scheduler=None
+    ) -> DisposableBase:
+        # Note: Added return to ensure the subscription object is passed back
         return self._observable.subscribe(
             on_next=on_next,
             on_error=on_error,
