@@ -45,3 +45,6 @@ dev = [
     "pip-tools",
     "tox>=4.0"
 ]
+
+[project.optional-dependencies]
+test = ["pytest", "coverage"]
