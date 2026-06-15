@@ -53,7 +53,7 @@ class HeuristicsMinerLossyCountingBudgetMapper(BaseMap[AbstractEvent, Heuristics
             return None
 
 
-# Class originally developed by Magnus Frederiksen as part of his BSc project at DTU entitled
+# Class originally developed by Magnus Frederiksen as part of his B.S.c project at DTU entitled
 # "Development of Process Mining and Complex Event Processing using Python"
 class HeuristicsMinerLossyCountingBudget:
     def __init__(self, budget=10, dependency_threshold=0.0, and_threshold=0.8):
@@ -69,17 +69,17 @@ class HeuristicsMinerLossyCountingBudget:
     def ingest_event(self, event):
 
         # for budget lossy counting, if relation or caseID already exists, the memory will just be replaced and not
-        # expanded so we only clean up when the caseID or relation doesnt exist, which results in creating a new one
+        # expanded so we only clean up when the caseID or relation doesn't exist, which results in creating a new one
         if event.get_trace_name() in self.__D_C:  # if caseID already exist
-            lastEvent = self.__D_C[event.get_trace_name()]  # localy save former event
+            lastEvent = self.__D_C[event.get_trace_name()]  # locally save former event
             del self.__D_C[event.get_trace_name()]  # replace caseID's former event with new event
             self.__D_C[event.get_trace_name()] = [event.get_event_name(), lastEvent[1] + 1, lastEvent[2],
                                                   event.get_event_time()]
 
-            r_N = (lastEvent[0], event.get_event_name())  # save relation localy
+            r_N = (lastEvent[0], event.get_event_name())  # save relation locally
 
             if r_N in self.__D_R:  # if relation exists in set
-                lastRelation = self.__D_R[r_N]  # localy save former relation
+                lastRelation = self.__D_R[r_N]  # locally save former relation
                 del self.__D_R[r_N]  # replace relation
 
                 diff = (event.get_event_time() - lastEvent[3]) - lastRelation[
@@ -88,15 +88,15 @@ class HeuristicsMinerLossyCountingBudget:
 
                 self.__D_R[r_N] = [lastRelation[0] + 1, lastRelation[1], newTime]
 
-            else:  # the relation doesent exist, create it
+            else:  # the relation doesn't exist, create it
                 while len(self.__D_R) + len(
-                        self.__D_C) >= self.__budget:  # if budget is reached when adding a new key + iten
+                        self.__D_C) >= self.__budget:  # if budget is reached when adding a new key + item
                     self.__bucket_cleaning()  # bucket cleaning time
                 self.__D_R[r_N] = (1, self.__current_bucket, event.get_event_time() - lastEvent[3])
 
         else:  # caseID doesnt exist, create it
             while ((len(self.__D_R) + len(
-                    self.__D_C)) >= self.__budget):  # if budget is reached when adding a new key + iten
+                    self.__D_C)) >= self.__budget):  # if budget is reached when adding a new key + item
                 self.__bucket_cleaning()  # bucket cleaning time
             self.__D_C[event.get_trace_name()] = (
             event.get_event_name(), 1, self.__current_bucket, event.get_event_time())
@@ -107,17 +107,17 @@ class HeuristicsMinerLossyCountingBudget:
     def __bucket_cleaning(self):
         self.__current_bucket += 1  # increment bucket to clean all items not within the new bucket number
 
-        D_Ctobedel = []  # the 2 lists are needed to avoid messing with the comming loops
+        D_Ctobedel = []  # the 2 lists are needed to avoid messing with the coming loops
         D_Rtobedel = []
 
-        for caseID, (eventName, frequency, bucket, time) in self.__D_C.items():  # for all caseIDs' occured
-            if frequency + bucket <= self.__current_bucket:  # if not above the bucket threshold on all events occured
+        for caseID, (eventName, frequency, bucket, time) in self.__D_C.items():  # for all caseIDs' occurred
+            if frequency + bucket <= self.__current_bucket:  # if not above the bucket threshold on all events occurred
                 D_Ctobedel.append(caseID)
 
         for caseID in D_Ctobedel:  # deleted the event
             del self.__D_C[caseID]
 
-        for relation, (frequency, bucket, time) in self.__D_R.items():  # for all relations occured
+        for relation, (frequency, bucket, time) in self.__D_R.items():  # for all relations occurred
             if frequency + bucket <= self.__current_bucket:  # if not above the bucket threshold of all relations
                 D_Rtobedel.append(relation)
 

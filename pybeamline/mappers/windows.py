@@ -35,9 +35,6 @@ class SlidingWindow(BaseMap[Any, List[Any]]):
         return results.copy() if results else None
 
 
-from typing import Any, List, Optional, override
-
-
 
 
 

@@ -293,7 +293,7 @@ class TestStream(unittest.TestCase):
 
         class AsyncSource(BaseSource[int]):
 
-            def __init__(self, items: list[int], delay=0.02):
+            def __init__(self, items: list[int], delay=0.04):
                 self.items = items
                 self.delay = delay
 

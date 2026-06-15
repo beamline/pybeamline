@@ -27,10 +27,7 @@ class SoftConformanceStatus:
             self.last_prob = self.model.get_sequence_probability(
                 self.last_act, event_name
             )
-
             self.prob *= self.last_prob
-
-            # Java: logProb += -Math.log(lastProb)
             if self.last_prob > 0.0:
                 self.log_prob += -math.log(self.last_prob)
             else:

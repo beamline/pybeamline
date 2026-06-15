@@ -1,4 +1,3 @@
-from typing import Optional
 from pybeamline.models.pdfa.pdfa import Pdfa
 
 class WeightsNormalizer:
