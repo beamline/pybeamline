@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 
 from pm4py.objects.petri_net.obj import PetriNet, Marking
 
@@ -60,7 +60,7 @@ class CaseState:
 
             return before, after
 
-        def alignment_element_to_str(step: str | PetriNet.Transition) -> str:
+        def alignment_element_to_str(step: Union[str, PetriNet.Transition]) -> str:
             if isinstance(step, str):
                 return step
             return step.name
