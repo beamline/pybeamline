@@ -17,7 +17,7 @@ class SlidingWindowToLog(BaseMap[List[AbstractEvent], DataFrame]):
         return [converted_log] if converted_log is not None else None
 
     @staticmethod
-    def list_to_log(events: List[AbstractEvent]) -> DataFrame | None:
+    def list_to_log(events: List[AbstractEvent]) -> Optional[DataFrame]:
         df = DataFrame([e.to_dict() for e in events])
         if not {"event_attributes", "concept:name", "time:timestamp"}.issubset(df.columns):
             return None
