@@ -51,6 +51,10 @@ class Stream(Generic[T]):
             def _execute():
                 try:
                     base_source.execute()
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    base_source.error(e)
+                    raise e
                 finally:
                     if not completed_event.is_set():
                         observer.on_completed()

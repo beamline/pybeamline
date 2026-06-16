@@ -293,7 +293,7 @@ class TestStream(unittest.TestCase):
 
         class AsyncSource(BaseSource[int]):
 
-            def __init__(self, items: list[int], delay=0.02):
+            def __init__(self, items: list[int], delay=0.04):
                 self.items = items
                 self.delay = delay
 
@@ -319,6 +319,7 @@ class TestStream(unittest.TestCase):
 
         sink = CollectorSink()
         stream1 = Stream.source(AsyncSource([1, 1, 1, 1]))
+        time.sleep(0.02)
         stream2 = Stream.source(AsyncSource([2, 2, 2, 2]))
         stream1.merge(stream2).sink(sink)
         print(sink.items)
