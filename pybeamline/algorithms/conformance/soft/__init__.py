@@ -1,0 +1,1 @@
+from pybeamline.algorithms.conformance.soft.pdfa_conformance import soft_conformance

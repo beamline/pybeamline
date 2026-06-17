@@ -1,2 +1,8 @@
+from pybeamline.mappers.dfg_str_to_graphviz import dfg_str_to_graphviz
 from pybeamline.mappers.infinite_size_directly_follows_mapper import infinite_size_directly_follows_mapper
+from pybeamline.mappers.print_operator import print_operator
+from pybeamline.mappers.skip_events import skip_events
+from pybeamline.mappers.sleep_operator import sleep_operator
 from pybeamline.mappers.sliding_window_to_log import sliding_window_to_log
+from pybeamline.mappers.to_directly_follow_relations import to_directly_follow_relations
+from pybeamline.mappers.windows import sliding_window, tumbling_window
