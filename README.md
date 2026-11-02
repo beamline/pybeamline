@@ -1,6 +1,8 @@
 # Streaming process mining with `pyBeamline`
 
 [![PyPI version](https://badge.fury.io/py/pybeamline.svg)](https://badge.fury.io/py/pybeamline)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pybeamline?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=total%20downloads)](https://pepy.tech/projects/pybeamline)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pybeamline?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads%2Fmonth)](https://pepy.tech/projects/pybeamline)
 
 `pyBeamline` is a Python version of Beamline. While the same set of ideas and principles of Beamline have been ported into `pyBeamline`, the underlying goal and technology is very different.
 
