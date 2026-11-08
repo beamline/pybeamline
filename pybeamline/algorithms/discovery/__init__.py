@@ -17,6 +17,6 @@ from pybeamline.algorithms.discovery.stardust import (
     StardustMapper,
     StardustUpdate,
     frequency_based_sample,
-    stardust_mapper,
+    stardust_miner,
 )
 

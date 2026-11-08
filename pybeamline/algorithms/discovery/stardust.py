@@ -339,7 +339,7 @@ class StardustMapper(BaseMap[BEvent, StardustUpdate]):
         )
 
 
-def stardust_mapper(
+def stardust_miner(
         initialization_traces: int = 100,
         sampling_rate: float = 0.8,
         forgetting_size: int = 100,

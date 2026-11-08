@@ -4,7 +4,7 @@ from pybeamline.algorithms.discovery import (
     StardustConfig,
     StardustMapper,
     frequency_based_sample,
-    stardust_mapper,
+    stardust_miner,
 )
 from pybeamline.bevent import BEvent
 from pybeamline.stream.stream import Stream
@@ -18,7 +18,7 @@ class TestStardust(unittest.TestCase):
 
     def test_interleaved_cases_complete_as_distinct_variants_and_prune_prefixes(self):
         calls = []
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=2,
             sampling_rate=1,
             forgetting_size=5,
@@ -53,7 +53,7 @@ class TestStardust(unittest.TestCase):
 
     def test_model_is_retrained_only_when_sampled_behavior_changes(self):
         calls = []
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=2,
             sampling_rate=0.8,
             forgetting_size=10,
@@ -80,7 +80,7 @@ class TestStardust(unittest.TestCase):
         self.assertEqual(len(calls), 2)
 
     def test_inactive_variants_are_forgotten_after_forgetting_size(self):
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=1,
             sampling_rate=1,
             forgetting_size=2,
@@ -102,7 +102,7 @@ class TestStardust(unittest.TestCase):
             config=StardustConfig(initialization_traces=1),
             discovery_algorithm=lambda sample: dict(sample),
         )
-        preserved = stardust_mapper(
+        preserved = stardust_miner(
             initialization_traces=1,
             max_consecutive_repetitions=None,
             discovery_algorithm=lambda sample: dict(sample),
@@ -117,7 +117,7 @@ class TestStardust(unittest.TestCase):
         self.assertEqual(preserved.active_variants, {("A", "A", "A", "A"): 1})
 
     def test_stream_emits_initial_model_and_drift_updates(self):
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=1,
             sampling_rate=1,
             forgetting_size=10,
@@ -136,7 +136,7 @@ class TestStardust(unittest.TestCase):
         self.assertEqual(updates[1].completed_traces, 2)
 
     def test_explicit_completion_supports_sources_without_a_sentinel_event(self):
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=1,
             discovery_algorithm=lambda sample: "model",
         )
@@ -150,7 +150,7 @@ class TestStardust(unittest.TestCase):
     def test_conformance_is_measured_before_updating_the_model(self):
         models = []
         evaluations = []
-        mapper = stardust_mapper(
+        mapper = stardust_miner(
             initialization_traces=1,
             sampling_rate=1,
             discovery_algorithm=lambda sample: models.append(dict(sample)) or len(models),
@@ -195,7 +195,7 @@ class TestStardust(unittest.TestCase):
             frequency_based_sample({("A",): 0}, sampling_rate=0.8)
 
     def test_cannot_complete_a_case_that_has_not_started(self):
-        mapper = stardust_mapper(discovery_algorithm=lambda sample: dict(sample))
+        mapper = stardust_miner(discovery_algorithm=lambda sample: dict(sample))
         with self.assertRaisesRegex(KeyError, "no events were recorded"):
             mapper.complete_case("missing")
 
